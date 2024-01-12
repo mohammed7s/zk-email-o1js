@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const filePath = path.join(__dirname, '../../eml/Hello.eml'); 
 const rawEmail = fs.readFileSync(filePath, "utf8");
 
-console.log(rawEmail);
+//console.log(rawEmail);
 
 const dkimResult = await verifyDKIMSignature(Buffer.from(rawEmail));
 
@@ -20,12 +20,13 @@ const bodyHash = dkimResult.bodyHash;
 const message = dkimResult.message; 
 
 
-//console.log('1', dkimResult); 
+// console.log('1', dkimResult); 
 // console.log('2', signature); 
 // console.log('3', publicKey); 
 // console.log('4', body); 
 // console.log('5', bodyHash);
 // console.log('6', message); 
+
 
 const circuitInputs = generateCircuitInputs({
   rsaSignature: dkimResult.signature, // The RSA signature of the email
@@ -41,4 +42,4 @@ const circuitInputs = generateCircuitInputs({
 });
 
 console.log(circuitInputs); 
-// // fs.writeFileSync("./input.json", JSON.stringify(circuitInputs));
+// // // fs.writeFileSync("./input.json", JSON.stringify(circuitInputs));
