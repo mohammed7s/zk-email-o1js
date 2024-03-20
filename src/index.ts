@@ -1,2 +1,3 @@
-// import { HashStorage } from './hash.js';
-// export { HashStorage }; 
+import { EmailVerifier } from './EmailVerifier.js';
+
+export { EmailVerifier }; 
