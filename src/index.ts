@@ -1,2 +1,2 @@
-import { HashStorage } from './hash.js';
-export { HashStorage }; 
+// import { HashStorage } from './hash.js';
+// export { HashStorage }; 
