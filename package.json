@@ -38,6 +38,12 @@
     
   },
   "peerDependencies": {
-    "o1js": "0.17.0"
+  },
+  "dependencies": {
+    "@zk-email/helpers": "^6.0.2",
+    "big-integer": "^1.6.52",
+    "o1js": "1.*",
+    "o1js-base64": "^0.0.3",
+    "o1js-rsa": "^0.0.1"
   }
 }
