@@ -8,7 +8,7 @@ export {
 /**
  * PKCS#1 v1.5 encoding.
  * This function follows the RFC3447 standard: https://datatracker.ietf.org/doc/html/rfc3447#section-9.2
- * Reference implementation: 
+ * Reference implementation: https://github.com/kmille/dkim-verify/blob/2efb21502d259a8738d9cec7e348c2fed95c3c7b/verify-dkim.py#L98
  * 
  * How it works:
  * - Takes a digest and pads it as follows: padding + hashing algorithm identifier + digest
@@ -63,6 +63,7 @@ function pkcs1v15Encode(
 
 /**
  * Canonicalize the body as per RFC 6376 section 3.4.4 for "relaxed" Body Canonicalization Algorithm.
+ * Reference implementation: https://github.com/kmille/dkim-verify/blob/2efb21502d259a8738d9cec7e348c2fed95c3c7b/verify-dkim.py#L17
  * 
  * @param {string} body The body to be canonicalized.
  * @returns {Buffer} The canonicalized body.
