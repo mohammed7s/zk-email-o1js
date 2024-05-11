@@ -8,48 +8,43 @@ export { emailVerify };
 /**
  * Verifies a DKIM signature using the provided message, signature, and public key.
  *
- * @param {Bytes} headers The message to be verified, represented as a Bytes object.
- * @param {Bigint2048} signature The signature to be verified, represented as a bigint.
- * @param {Bigint2048} publicKey The public key used for verification, represented as a bigint.
- * @returns {void} This function does not return any value.
+ * @param headers - The message to be verified, represented as a Bytes object.
+ * @param signature - The signature to be verified.
+ * @param publicKey - The public key used for verification.
+ * @param modulusLength - The length of the modulus.
+ * @param bodyHashCheck - Indicates whether to check the body hash.
+ * @param headerBodyHash - The hash of the header and body.
+ * @param body - The body of the email.
  */
 function emailVerify(
   headers: Bytes,
-  signature: bigint,
-  publicKey: bigint,
+  signature: Bigint2048,
+  publicKey: Bigint2048,
+  modulusLength: number,
   bodyHashCheck: boolean,
-  headerBodyHash: string,
+  headerBodyHash: Bytes,
   body: Bytes
 ) {
-  // 1. verify the dkim signature
-  let preimageBytes = Bytes(headers.length).from(headers); // convert the preimage to bytes
-  let hash = Hash.SHA2_256.hash(preimageBytes); // hash the preimage using o1js
-  const modBits = publicKey.toString(2).length; // get emLen : Calculate the length of the encoded message in bytes
-  console.log('publicKey', publicKey);
-  console.log('modBits', modBits);
-  const emLen = Math.ceil(modBits / 8); //
-  console.log('emlen', emLen);
-  let paddedHash = pkcs1v15Pad(hash, emLen); // pkcs15encode hash
-  // convert all to bigint2048
-  let final_message = Bigint2048.from(BigInt('0x' + paddedHash.toHex()));
-  let final_signature = Bigint2048.from(signature);
-  let final_publicKey = Bigint2048.from(publicKey);
+  // 1. Hash the headers
+  const hash = Hash.SHA2_256.hash(headers); // Hash the preimage using o1js
+  const paddedHash = pkcs1v15Pad(hash, Math.ceil(modulusLength / 8)); // PKCS#1 v1.5 encode the hash
 
-  // rsaverify
-  rsaVerify65537(final_message, final_signature, final_publicKey);
+  // Create message for verification
+  const message = Provable.witness(Bigint2048, () => {
+    const hexString = '0x' + paddedHash.toHex();
+    return Bigint2048.from(BigInt(hexString));
+  });
 
-  // 2. check Body hash
-  if (bodyHashCheck == true) {
-    const encodedB64 = Bytes.fromString(headerBodyHash);
-    const decodedB64 = base64Decode(encodedB64, 32);
-    console.log('encodedB64', encodedB64.toBytes());
-    console.log('decodedB64', decodedB64.toBytes());
-    
-    // hash body
-    let hashedBody = Hash.SHA2_256.hash(body);
-    console.log('hashedBody', hashedBody);
-    console.log('hashedBody_bytes', hashedBody.toBytes());
-    console.log('hashedBody_hex', hashedBody.toHex());
+  // Verify RSA65537 signature
+  rsaVerify65537(message, signature, publicKey);
+
+  // 2. Check body hash
+  if (bodyHashCheck) {
+    // Decode base64-encoded body hash
+    const decodedB64 = base64Decode(headerBodyHash, 32);
+
+    // Hash body
+    const hashedBody = Hash.SHA2_256.hash(body);
     Provable.assertEqual(decodedB64, hashedBody);
   }
 }

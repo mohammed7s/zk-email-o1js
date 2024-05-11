@@ -1,7 +1,6 @@
-//import fs from "fs";
 import { emailVerify } from './email-verify.js';
 import { Bytes } from 'o1js';
-//import {Bigint2048} from 'o1js-rsa';
+import { Bigint2048 } from 'o1js-rsa';
 
 describe.only('method', () => {
   // parameters come from the example emain in this repo: https://github.com/kmille/dkim-verify/tree/master
@@ -18,10 +17,18 @@ describe.only('method', () => {
     // When
     const message_buffer = Buffer.from(params.message, 'hex');
     const message = Bytes.from(message_buffer);
-    const signature = BigInt(params.signature);
-    const publicKey = BigInt(params.publicKey);
+    const signature = Bigint2048.from(BigInt(params.signature));
+    const publicKey = Bigint2048.from(BigInt(params.publicKey));
 
-    emailVerify(message, signature, publicKey, false, '', Bytes.fromString(''));
+    emailVerify(
+      message,
+      signature,
+      publicKey,
+      2048,
+      false,
+      Bytes.fromString(''),
+      Bytes.fromString('')
+    );
   });
 });
 
