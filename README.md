@@ -52,3 +52,9 @@ https://github.com/zkemail
 
 Project purpose: 
 write zkemail with o1js circuits. 
+
+
+FAQs
+
+1. `Error: DKIM signature verification failed for domain androidloves.me. Reason: DNS failure: ESERVFAIL`
+This is an internet issue. try a different internet connection or disable vpn

@@ -16,8 +16,8 @@ export {
  * Verifies a DKIM signature using the provided message, signature, and public key.
  * 
  * @param {Bytes} headers The message to be verified, represented as a Bytes object.
- * @param {bigint} signature The signature to be verified, represented as a bigint.
- * @param {bigint} publicKey The public key used for verification, represented as a bigint.
+ * @param {Bigint2048} signature The signature to be verified, represented as a bigint.
+ * @param {Bigint2048} publicKey The public key used for verification, represented as a bigint.
  * @returns {void} This function does not return any value.
  */
 function emailVerify(
@@ -27,20 +27,24 @@ function emailVerify(
     bodyHashCheck: boolean,
     headerBodyHash:string, 
     body: string
-) {
+    ) {
 
     // 1. verify the dkim signature 
     let preimageBytes = Bytes(headers.length).from(headers); // convert the preimage to bytes
     let hash = Hash.SHA2_256.hash(preimageBytes); // hash the preimage using o1js
     const modBits = publicKey.toString(2).length; // get emLen : Calculate the length of the encoded message in bytes
-    const emLen = Math.ceil(modBits / 8); 
+    console.log('publicKey', publicKey); 
+    console.log('modBits', modBits); 
+    const emLen = Math.ceil(modBits / 8);  // 
+    console.log('emlen', emLen); 
     let paddedHash = pkcs1v15Encode(hash,emLen);  // pkcs15encode hash  
     // convert all to bigint2048
     let final_message = Bigint2048.from(BigInt("0x"+ paddedHash.toHex())); 
-    let final_signature =  Bigint2048.from(BigInt(signature));
-    let final_modulus = Bigint2048.from(BigInt(publicKey)); 
+    let final_signature = Bigint2048.from(signature); 
+    let final_publicKey = Bigint2048.from(publicKey); 
+
     // rsaverify
-    rsaVerify65537(final_message, final_signature, final_modulus);
+    rsaVerify65537(final_message, final_signature, final_publicKey);
 
     // 2. check Body hash
     if (bodyHashCheck == true) {
