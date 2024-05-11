@@ -10,18 +10,19 @@ type EmailVerifyInputs = {
   signature: bigint;
   publicKey: bigint;
   headerBodyHash: string;
-  body: string;
+  body: Bytes;
 };
 
 async function generateInputs(rawEmail: string): Promise<EmailVerifyInputs> {
   // parse raw email and retrieves public key of the domain in header
   const dkimResult = await verifyDKIMSignature(Buffer.from(rawEmail));
-  console.log('publicKey', dkimResult.publicKey.toString(2).length);
+  console.log('dkimResult: ', dkimResult)
   const headers = Bytes.from(dkimResult.headers);
   const signature = BigInt(dkimResult.signature);
   const publicKey = BigInt(dkimResult.publicKey);
   const headerBodyHash = dkimResult.bodyHash.toString();
-  const body = dkimResult.body.toString('utf-8');
+  const body = Bytes.from(new Uint8Array(dkimResult.body));
+
   return { headers, signature, publicKey, headerBodyHash, body };
 }
 

@@ -21,7 +21,7 @@ describe.only('method', () => {
     const signature = BigInt(params.signature);
     const publicKey = BigInt(params.publicKey);
 
-    emailVerify(message, signature, publicKey, false, '', '');
+    emailVerify(message, signature, publicKey, false, '', Bytes.fromString(''));
   });
 });
 

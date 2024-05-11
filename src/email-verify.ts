@@ -1,5 +1,5 @@
 import { Bigint2048, rsaVerify65537 } from 'o1js-rsa';
-import { pkcs1v15Encode, canonicalizeBody } from './utils.js';
+import { pkcs1v15Pad } from './utils.js';
 import { Hash, Bytes, Provable } from 'o1js';
 import { base64Decode } from 'o1js-base64';
 
@@ -19,7 +19,7 @@ function emailVerify(
   publicKey: bigint,
   bodyHashCheck: boolean,
   headerBodyHash: string,
-  body: string
+  body: Bytes
 ) {
   // 1. verify the dkim signature
   let preimageBytes = Bytes(headers.length).from(headers); // convert the preimage to bytes
@@ -29,7 +29,7 @@ function emailVerify(
   console.log('modBits', modBits);
   const emLen = Math.ceil(modBits / 8); //
   console.log('emlen', emLen);
-  let paddedHash = pkcs1v15Encode(hash, emLen); // pkcs15encode hash
+  let paddedHash = pkcs1v15Pad(hash, emLen); // pkcs15encode hash
   // convert all to bigint2048
   let final_message = Bigint2048.from(BigInt('0x' + paddedHash.toHex()));
   let final_signature = Bigint2048.from(signature);
@@ -44,10 +44,9 @@ function emailVerify(
     const decodedB64 = base64Decode(encodedB64, 32);
     console.log('encodedB64', encodedB64.toBytes());
     console.log('decodedB64', decodedB64.toBytes());
-    // cancocalize body
-    let canonicalBody = canonicalizeBody(body);
+    
     // hash body
-    let hashedBody = Hash.SHA2_256.hash(canonicalBody);
+    let hashedBody = Hash.SHA2_256.hash(body);
     console.log('hashedBody', hashedBody);
     console.log('hashedBody_bytes', hashedBody.toBytes());
     console.log('hashedBody_hex', hashedBody.toHex());
