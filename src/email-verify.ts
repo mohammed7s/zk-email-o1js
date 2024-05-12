@@ -25,7 +25,7 @@ function emailVerify(
   headerBodyHash: Bytes,
   body: Bytes
 ) {
-  // 1. Hash the headers
+  // 1. Verify the DKIM signature
   const hash = Hash.SHA2_256.hash(headers); // Hash the preimage using o1js
   const paddedHash = pkcs1v15Pad(hash, Math.ceil(modulusLength / 8)); // PKCS#1 v1.5 encode the hash
 
