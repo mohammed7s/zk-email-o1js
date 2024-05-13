@@ -1,4 +1,4 @@
-# Zk Email O1js
+# Zk Email o1js
 
 ZK Email is an o1js library that can be used to verify authenticity of email signatures from specific domains in addition to verifying the specific text of the email body within a mina smart contract. 
 
@@ -43,8 +43,6 @@ This is an internet issue. try a different internet connection or disable vpn if
 
 [Apache-2.0](LICENSE)
 
-
-
 ## How ZK Email works 
 
 Most emails today are signed by the domain that sent it using a public key infrastructure (a public and private key pairs) like RSA. The domain to public key mapping is kept in the public DNS registry. Email mailboxes use this to verify the identity of email senders to detect phishing and scam attempts and that the original message has not been tampered with in transit. 
@@ -65,14 +63,16 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=androidloves.me;
 	SddyAZSw8lHcvkTqWhJKrCU0EoVAsik=
 ```
 
-a: The signing algorithm used
-c: the format
-d: domain 
-s: 
-t: 
-h: 
-bh: 
-b: 
+v: version of the DKIM key record 
+a: The algorithm used for hashing (sha256) and signing (RSA)  
+c: message canocicalization: how is message formatted before signing  
+d: domain used for the DNS lookup  
+s: Selector for the public key  
+t: signature timestamp  
+h: header fields used as message in signature  
+bh: body hash of body in base64 encoded  
+b: base64 encoded signature  
+
 
 To verify a DKIM signature we follow these steps: 
 
@@ -96,8 +96,18 @@ These steps are summarized in the following diagram:
 TODO: explain how the Regex works and how its used along the DKIM signature to verify specific parts of the body
 
 
-## Implementation details 
+## ZK email o1js Implementation details 
 
-* We utilize the offchain [helpers]() from the zkemail library, particularly the DKIM parser class to generate the inputs that would go in the circuit. This is implemented in the `generate-inputs.ts` file. 
+### External libraries 
 
-* 
+We utilize the offchain [helpers](https://github.com/zkemail/zk-email-verify/tree/5613d743773927fa4fbee1472b6aed6bde34a6cc/packages/helpers) from the zkemail library, particularly the DKIM parser class to generate the inputs that would go in the circuit. This is implemented in the `generate-inputs.ts` file. The choice to use the original zk email library helpers to generate inputs is that we can benefit from code audits and better compatibility with other zk-email apps in the future. 
+
+
+### Components 
+* RSA-o1js: Used to verify the DKIM signature 
+* Base64-o1js: 
+* Regex-o1js: 
+
+### 
+
+### Benchmarks/ Performance 
