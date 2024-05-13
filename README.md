@@ -20,6 +20,10 @@ npm run build
 To run with any email, download raw email file (.eml) and place in /eml folder
 change `email.eml` to required email file in this line in main.ts `const filePath = path.join(__dirname, '../../eml/email.eml');`
 
+```sh
+node build/src/main.js
+```
+
 ### How to run tests
 
 ```sh
