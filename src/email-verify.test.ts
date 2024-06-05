@@ -1,8 +1,22 @@
-import { emailVerify } from './email-verify.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Bytes } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
+import { emailVerify } from './email-verify.js';
+import { generateInputs } from './generate-inputs.js';
 
-describe.only('method', () => {
+
+describe('emailVerify', () => {
+
+  let rawEmail: string;
+
+  beforeAll(async () => {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const filePath = path.join(__dirname, '../eml/email.eml');
+    rawEmail = fs.readFileSync(filePath, 'utf8');
+  });
+
   // parameters come from the example emain in this repo: https://github.com/kmille/dkim-verify/tree/master
   it('should verify a hardcoded valid DKIM parameters', () => {
     const params = {
@@ -30,6 +44,108 @@ describe.only('method', () => {
       Bytes.fromString('')
     );
   });
+
+  it('should verify test email with no bodyHashCheck', async function () {
+
+    const inputs = await generateInputs(rawEmail);
+    // Call the provable emailVerify function with parsed input
+    emailVerify(
+      inputs.headers,
+      inputs.signature,
+      inputs.publicKey,
+      inputs.modulusLength,
+      false,
+      inputs.headerBodyHash,
+      inputs.body
+    );
+  }); 
+
+  it('should verify test email with bodyHashCheck', async function () {
+    const inputs = await generateInputs(rawEmail);
+    // Call the provable emailVerify function with parsed input
+    emailVerify(
+      inputs.headers,
+      inputs.signature,
+      inputs.publicKey,
+      inputs.modulusLength,
+      true,
+      inputs.headerBodyHash,
+      inputs.body
+    );
+  }); 
+  
+  it('should fail if the RSA signature is wrong', async function () {
+    const inputs = await generateInputs(rawEmail);
+    // Modify the signature to be incorrect
+    const invalidSignatureValue = inputs.signature.toBigint()+1n; 
+    const invalidSignature = Bigint2048.from(invalidSignatureValue); 
+    expect(() => {
+      emailVerify(
+        inputs.headers,
+        invalidSignature,
+        inputs.publicKey,
+        inputs.modulusLength,
+        false,
+        inputs.headerBodyHash,
+        inputs.body
+      );
+    }).toThrow();
+  });
+
+  it('should fail if message (headers) is tampered', async function () {
+    const inputs = await generateInputs(rawEmail);
+    // Tamper with the headers
+    const tamperedHeaders = Buffer.from(inputs.headers.toString());
+    tamperedHeaders[0] = 1; // Modify the first byte to tamper with the headers
+    const tamperedHeadersBytes = Bytes.from(tamperedHeaders);
+    expect(() => {
+      emailVerify(
+        tamperedHeadersBytes,
+        inputs.signature,
+        inputs.publicKey,
+        inputs.modulusLength,
+        false,
+        inputs.headerBodyHash,
+        inputs.body
+      );
+    }).toThrow();
+  }); 
+
+  it('should fail if body is tampered', async function () {
+    const inputs = await generateInputs(rawEmail);
+    // Tamper with the body
+    const tamperedBody = Buffer.from(inputs.body.toString());
+    tamperedBody[tamperedBody.length - 1] = 1; // Modify the last byte to tamper with the body
+    const tamperedBodyBytes = Bytes.from(tamperedBody);
+    expect(() => {
+      emailVerify(
+        inputs.headers,
+        inputs.signature,
+        inputs.publicKey,
+        inputs.modulusLength,
+        true, // Enable body hash check since we are tampering with the body
+        inputs.headerBodyHash,
+        tamperedBodyBytes
+      );
+    }).toThrow();
+  }); 
+
+  it('should fail if bodyHash is tampered',  async function ()  {
+    const inputs = await generateInputs(rawEmail);
+    // Tamper with the body hash
+    const tamperedBodyHash = Bytes.fromString(inputs.headerBodyHash.toString() + 'a');
+    expect(() => {
+      emailVerify(
+        inputs.headers,
+        inputs.signature,
+        inputs.publicKey,
+        inputs.modulusLength,
+        true, // Enable body hash check since we are tampering with the body hash
+        tamperedBodyHash,
+        inputs.body
+      );
+    }).toThrow();
+  }); 
 });
 
 // need test for the pkcs1.5Encode function.
