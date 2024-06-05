@@ -42,7 +42,6 @@
   },
   "dependencies": {
     "@zk-email/helpers": "^6.0.3",
-    "o1js-base64": "^0.0.3",
     "o1js-rsa": "^0.0.1"
   }
 }

@@ -1,7 +1,6 @@
 import { Bigint2048, rsaVerify65537 } from 'o1js-rsa';
 import { pkcs1v15Pad } from './utils.js';
 import { Hash, Bytes, Provable } from 'o1js';
-import { base64Decode } from 'o1js-base64';
 
 export { emailVerify };
 
@@ -41,7 +40,7 @@ function emailVerify(
   // 2. Check body hash
   if (bodyHashCheck) {
     // Decode base64-encoded body hash
-    const decodedB64 = base64Decode(headerBodyHash, 32);
+    const decodedB64 = headerBodyHash.base64Decode(32);
 
     // Hash body
     const hashedBody = Hash.SHA2_256.hash(body);
