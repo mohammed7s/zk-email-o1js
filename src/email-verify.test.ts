@@ -1,24 +1,19 @@
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { Bytes } from 'o1js';
+import { Bytes, UInt8 } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
 import { emailVerify } from './email-verify.js';
-import { generateInputs } from './generate-inputs.js';
-
+import { EmailVerifyInputs, generateInputs } from './generate-inputs.js';
 
 describe('emailVerify', () => {
-
-  let rawEmail: string;
+  let inputs: EmailVerifyInputs;
 
   beforeAll(async () => {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const filePath = path.join(__dirname, '../eml/email.eml');
-    rawEmail = fs.readFileSync(filePath, 'utf8');
+    const rawEmail = fs.readFileSync('./eml/email.eml', 'utf8');
+    inputs = await generateInputs(rawEmail);
   });
 
-  // parameters come from the example emain in this repo: https://github.com/kmille/dkim-verify/tree/master
-  it('should verify a hardcoded valid DKIM parameters', () => {
+  // The RSA parameters are imported from the example email in this repo: https://github.com/kmille/dkim-verify/tree/master
+  it('should verify hardcoded valid DKIM parameters', async () => {
     const params = {
       message:
         '746f3a6d6f68616d6d6564303837373440676d61696c2e636f6d0d0a6d6573736167652d69643a3c42413730464230352d343531362d343846442d394638412d41343930443338393134433740676d61696c2e636f6d3e0d0a7375626a6563743a48656c6c6f0d0a646174653a5468752c2032312044656320323032332031343a35333a3332202b303533300d0a6d696d652d76657273696f6e3a312e302028312e30290d0a66726f6d3a6d6f68616d6d656420687573617269203c6d6f68616d6d656468757361726940676d61696c2e636f6d3e0d0a636f6e74656e742d7472616e736665722d656e636f64696e673a376269740d0a646b696d2d7369676e61747572653a763d313b20613d7273612d7368613235363b20633d72656c617865642f72656c617865643b20643d676d61696c2e636f6d3b20733d32303233303630313b20743d313730333135303632393b20783d313730333735353432393b20646172613d676f6f676c652e636f6d3b20683d746f3a6d6573736167652d69643a7375626a6563743a646174653a6d696d652d76657273696f6e3a66726f6d203a636f6e74656e742d7472616e736665722d656e636f64696e673a66726f6d3a746f3a63633a7375626a6563743a646174653a6d6573736167652d6964203a7265706c792d746f3b2062683d4a696b41416a77625143665158724d67494738767a782b68327446543653574364792f65457870525a62303d3b20623d',
@@ -28,9 +23,7 @@ describe('emailVerify', () => {
         '20054049931062868895890884170436368122145070743595938421415808271536128118589158095389269883866014690926251520949836343482211446965168263353397278625494421205505467588876376305465260221818103647257858226961376710643349248303872103127777544119851941320649869060657585270523355729363214754986381410240666592048188131951162530964876952500210032559004364102337827202989395200573305906145708107347940692172630683838117810759589085094521858867092874903269345174914871903592244831151967447426692922405241398232069182007622735165026000699140578092635934951967194944536539675594791745699200646238889064236642593556016708235359',
     };
 
-    // When
-    const message_buffer = Buffer.from(params.message, 'hex');
-    const message = Bytes.from(message_buffer);
+    const message = Bytes.fromHex(params.message);
     const signature = Bigint2048.from(BigInt(params.signature));
     const publicKey = Bigint2048.from(BigInt(params.publicKey));
 
@@ -40,15 +33,13 @@ describe('emailVerify', () => {
       publicKey,
       2048,
       false,
-      Bytes.fromString(''),
-      Bytes.fromString('')
+      Bytes.from([0]),
+      Bytes.from([0])
     );
   });
 
-  it('should verify test email with no bodyHashCheck', async function () {
-
-    const inputs = await generateInputs(rawEmail);
-    // Call the provable emailVerify function with parsed input
+  it('should verify test email with no bodyHashCheck - correct body', async () => {
+    // Call the provable emailVerify function
     emailVerify(
       inputs.headers,
       inputs.signature,
@@ -58,11 +49,21 @@ describe('emailVerify', () => {
       inputs.headerBodyHash,
       inputs.body
     );
-  }); 
+  });
 
-  it('should verify test email with bodyHashCheck', async function () {
-    const inputs = await generateInputs(rawEmail);
-    // Call the provable emailVerify function with parsed input
+  it('should verify test email with no bodyHashCheck - incorrect body', async () => {
+    emailVerify(
+      inputs.headers,
+      inputs.signature,
+      inputs.publicKey,
+      inputs.modulusLength,
+      false,
+      inputs.headerBodyHash,
+      Bytes.from([...inputs.body.bytes, UInt8.from(0)])
+    );
+  });
+
+  it('should verify test email with bodyHashCheck', async () => {
     emailVerify(
       inputs.headers,
       inputs.signature,
@@ -72,13 +73,11 @@ describe('emailVerify', () => {
       inputs.headerBodyHash,
       inputs.body
     );
-  }); 
-  
-  it('should fail if the RSA signature is wrong', async function () {
-    const inputs = await generateInputs(rawEmail);
-    // Modify the signature to be incorrect
-    const invalidSignatureValue = inputs.signature.toBigint()+1n; 
-    const invalidSignature = Bigint2048.from(invalidSignatureValue); 
+  });
+
+  it('should fail if the DKIM signature is wrong', async () => {
+    // Use a random invalid DKIM signature
+    const invalidSignature = Bigint2048.from(1234567n);
     expect(() => {
       emailVerify(
         inputs.headers,
@@ -92,12 +91,12 @@ describe('emailVerify', () => {
     }).toThrow();
   });
 
-  it('should fail if message (headers) is tampered', async function () {
-    const inputs = await generateInputs(rawEmail);
-    // Tamper with the headers
-    const tamperedHeaders = Buffer.from(inputs.headers.toString());
-    tamperedHeaders[0] = 1; // Modify the first byte to tamper with the headers
-    const tamperedHeadersBytes = Bytes.from(tamperedHeaders);
+  it('should fail if DKIM message (headers) is tampered with', async () => {
+    // Tamper with the headers bytes
+    const tamperedHeadersBytes = Bytes.from([
+      ...inputs.headers.bytes,
+      UInt8.from(1),
+    ]);
     expect(() => {
       emailVerify(
         tamperedHeadersBytes,
@@ -109,14 +108,11 @@ describe('emailVerify', () => {
         inputs.body
       );
     }).toThrow();
-  }); 
+  });
 
-  it('should fail if body is tampered', async function () {
-    const inputs = await generateInputs(rawEmail);
-    // Tamper with the body
-    const tamperedBody = Buffer.from(inputs.body.toString());
-    tamperedBody[tamperedBody.length - 1] = 1; // Modify the last byte to tamper with the body
-    const tamperedBodyBytes = Bytes.from(tamperedBody);
+  it('should fail if the email body is tampered with', async () => {
+    // Modify the last byte to tamper with the email body
+    const tamperedBodyBytes = Bytes.from([...inputs.body.bytes, UInt8.from(1)]);
     expect(() => {
       emailVerify(
         inputs.headers,
@@ -128,12 +124,14 @@ describe('emailVerify', () => {
         tamperedBodyBytes
       );
     }).toThrow();
-  }); 
+  });
 
-  it('should fail if bodyHash is tampered',  async function ()  {
-    const inputs = await generateInputs(rawEmail);
+  it('should fail if the email bodyHash is tampered with', async function () {
     // Tamper with the body hash
-    const tamperedBodyHash = Bytes.fromString(inputs.headerBodyHash.toString() + 'a');
+    const tamperedBodyHash = Bytes.from([
+      ...inputs.headerBodyHash.bytes,
+      UInt8.from(0),
+    ]);
     expect(() => {
       emailVerify(
         inputs.headers,
@@ -145,7 +143,5 @@ describe('emailVerify', () => {
         inputs.body
       );
     }).toThrow();
-  }); 
+  });
 });
-
-// need test for the pkcs1.5Encode function.
