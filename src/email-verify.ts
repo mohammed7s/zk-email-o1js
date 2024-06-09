@@ -39,11 +39,12 @@ function emailVerify(
 
   // 2. Check body hash
   if (bodyHashCheck) {
-    // Decode base64-encoded body hash
-    const decodedB64 = headerBodyHash.base64Decode(32);
-
     // Hash body
     const hashedBody = Hash.SHA2_256.hash(body);
-    Provable.assertEqual(decodedB64, hashedBody);
+
+    // Base64 encode the computed body hash
+    const encodedBodyHash = hashedBody.base64Encode();
+
+    Provable.assertEqual(encodedBodyHash, headerBodyHash);
   }
 }
