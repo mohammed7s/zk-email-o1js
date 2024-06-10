@@ -1,4 +1,4 @@
-import { Bytes } from 'o1js';
+import { Field, Bytes } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
 import { verifyDKIMSignature } from '@zk-email/helpers/dist/dkim/index.js';
 
@@ -9,7 +9,7 @@ type EmailVerifyInputs = {
   signature: Bigint2048;
   publicKey: Bigint2048;
   modulusLength: number;
-  headerBodyHash: Bytes;
+  bodyHashIndex: Field;
   body: Bytes;
 };
 
@@ -22,8 +22,6 @@ type EmailVerifyInputs = {
 async function generateInputs(rawEmail: string): Promise<EmailVerifyInputs> {
   // Parse raw email and retrieve public key of the domain in header
   const dkimResult = await verifyDKIMSignature(Buffer.from(rawEmail));
-  console.log('DKIM result:', dkimResult);
-  // console.log('DKIM headers length:', dkimResult);
 
   // Extract components from DKIM result
   const headers = Bytes.from(dkimResult.headers);
@@ -32,8 +30,11 @@ async function generateInputs(rawEmail: string): Promise<EmailVerifyInputs> {
 
   const modulusLength = dkimResult.modulusLength;
 
-  const headerBodyHash = Bytes.fromString(dkimResult.bodyHash);
+  // const headerBodyHash = Bytes.fromString(dkimResult.bodyHash);
+  const bodyHashIndex = Field(
+    dkimResult.headers.toString().indexOf(dkimResult.bodyHash) - 1
+  );
   const body = Bytes.from(new Uint8Array(dkimResult.body));
 
-  return { headers, signature, publicKey, modulusLength, headerBodyHash, body };
+  return { headers, signature, publicKey, modulusLength, bodyHashIndex, body };
 }

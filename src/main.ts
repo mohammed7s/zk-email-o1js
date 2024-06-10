@@ -24,7 +24,7 @@ async function main(rawEmail: string) {
     inputs.publicKey,
     inputs.modulusLength,
     true,
-    inputs.headerBodyHash,
+    inputs.bodyHashIndex,
     inputs.body
   );
 }

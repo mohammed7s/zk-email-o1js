@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { Bytes, UInt8 } from 'o1js';
+import { Field, Bytes, UInt8 } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
 import { emailVerify } from './email-verify.js';
 import { EmailVerifyInputs, generateInputs } from './generate-inputs.js';
@@ -33,7 +33,7 @@ describe('emailVerify', () => {
       publicKey,
       2048,
       false,
-      Bytes.from([0]),
+      Field(0),
       Bytes.from([0])
     );
   });
@@ -46,7 +46,7 @@ describe('emailVerify', () => {
       inputs.publicKey,
       inputs.modulusLength,
       false,
-      inputs.headerBodyHash,
+      inputs.bodyHashIndex,
       inputs.body
     );
   });
@@ -58,7 +58,7 @@ describe('emailVerify', () => {
       inputs.publicKey,
       inputs.modulusLength,
       false,
-      inputs.headerBodyHash,
+      inputs.bodyHashIndex,
       Bytes.from([...inputs.body.bytes, UInt8.from(0)])
     );
   });
@@ -70,7 +70,7 @@ describe('emailVerify', () => {
       inputs.publicKey,
       inputs.modulusLength,
       true,
-      inputs.headerBodyHash,
+      inputs.bodyHashIndex,
       inputs.body
     );
   });
@@ -85,7 +85,7 @@ describe('emailVerify', () => {
         inputs.publicKey,
         inputs.modulusLength,
         false,
-        inputs.headerBodyHash,
+        inputs.bodyHashIndex,
         inputs.body
       );
     }).toThrow();
@@ -104,7 +104,7 @@ describe('emailVerify', () => {
         inputs.publicKey,
         inputs.modulusLength,
         false,
-        inputs.headerBodyHash,
+        inputs.bodyHashIndex,
         inputs.body
       );
     }).toThrow();
@@ -120,18 +120,15 @@ describe('emailVerify', () => {
         inputs.publicKey,
         inputs.modulusLength,
         true, // Enable body hash check since we are tampering with the body
-        inputs.headerBodyHash,
+        inputs.bodyHashIndex,
         tamperedBodyBytes
       );
     }).toThrow();
   });
 
-  it('should fail if the email bodyHash is tampered with', async function () {
+  it('should fail if the email bodyHashIndex is false', async function () {
     // Tamper with the body hash
-    const tamperedBodyHash = Bytes.from([
-      ...inputs.headerBodyHash.bytes,
-      UInt8.from(0),
-    ]);
+    const falseBodyHashIndex = inputs.bodyHashIndex.add(Field.random());
     expect(() => {
       emailVerify(
         inputs.headers,
@@ -139,7 +136,7 @@ describe('emailVerify', () => {
         inputs.publicKey,
         inputs.modulusLength,
         true, // Enable body hash check since we are tampering with the body hash
-        tamperedBodyHash,
+        falseBodyHashIndex,
         inputs.body
       );
     }).toThrow();

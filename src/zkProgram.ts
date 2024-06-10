@@ -1,4 +1,4 @@
-import { ZkProgram, Bytes } from 'o1js';
+import { Field, ZkProgram, Bytes } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
 import { generateInputs } from './generate-inputs.js';
 import { emailVerify } from './email-verify.js';
@@ -10,7 +10,6 @@ const rawEmail = fs.readFileSync(filePath, 'utf8');
 // TODO create generic ZKProgram function at runtime
 const inputs = await generateInputs(rawEmail);
 class HeadersBytes extends Bytes(inputs.headers.length) {}
-class Bytes44 extends Bytes(44) {}
 class BodyBytes extends Bytes(inputs.body.length) {}
 
 let verifyEmailZkProgram = ZkProgram({
@@ -21,7 +20,7 @@ let verifyEmailZkProgram = ZkProgram({
         HeadersBytes.provable,
         Bigint2048,
         Bigint2048,
-        Bytes44.provable,
+        Field,
         BodyBytes.provable,
       ],
 
@@ -29,10 +28,18 @@ let verifyEmailZkProgram = ZkProgram({
         headers: HeadersBytes,
         signature: Bigint2048,
         publicKey: Bigint2048,
-        bodyHash: Bytes44,
+        bodyHashIndex: Field,
         body: BodyBytes
       ) {
-        emailVerify(headers, signature, publicKey, 1024, true, bodyHash, body);
+        emailVerify(
+          headers,
+          signature,
+          publicKey,
+          1024,
+          true,
+          bodyHashIndex,
+          body
+        );
       },
     },
   },
@@ -52,7 +59,7 @@ let proof = await verifyEmailZkProgram.verifyEmail(
   inputs.headers,
   inputs.signature,
   inputs.publicKey,
-  inputs.headerBodyHash,
+  inputs.bodyHashIndex,
   inputs.body
 );
 console.timeEnd('prove');
