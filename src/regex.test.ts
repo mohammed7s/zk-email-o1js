@@ -1,6 +1,7 @@
 import { Field, Bytes } from 'o1js';
-import { bodyHashRegex } from './utils';
+import { bodyHashRegex, selectSubarray } from './utils';
 import fs from 'fs';
+import { verifyDKIMSignature } from '@zk-email/helpers/dist/dkim';
 
 function utf8BytesToString(bytes: bigint[]): string {
   let utf8String = '';
@@ -107,5 +108,27 @@ describe('Body Hash Regex Tests', () => {
   it('should reject input with non Base64 body hash', () => {
     const input = 'bh=2JsdK4BMz#zt9w4Zlz2TdyVCFc+l7vNyT5aAgGDYf7fM=';
     expect(() => testBodyHashRegex(input, 1)).toThrow();
+  });
+
+  it('should select the correct revealed body hash bytes from an eml file', async () => {
+    const input = fs.readFileSync('./eml/email.eml', 'utf8');
+    const { headers, bodyHash } = await verifyDKIMSignature(Buffer.from(input));
+
+    const { out, reveal } = bodyHashRegex(Bytes.from(headers).bytes);
+    expect(out).toEqual(Field(1));
+
+    const bodyHashIndex = headers.toString().indexOf(bodyHash) - 1;
+    const selectedBodyHashBytes = selectSubarray(
+      reveal[0],
+      Field(bodyHashIndex),
+      44
+    );
+
+    const revealedBodyHash = utf8BytesToString(
+      selectedBodyHashBytes.map((x) => x.toBigInt())
+    );
+    expect(revealedBodyHash).toEqual(
+      'aeLbTnlUQQv2UFEWKHeiL5Q0NjOwj4ktNSInk8rN/P0='
+    );
   });
 });

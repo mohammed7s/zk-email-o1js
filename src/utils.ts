@@ -1,6 +1,6 @@
-import { Field, Bool, UInt8, Bytes } from 'o1js';
+import { Field, Bool, UInt8, Bytes, assert } from 'o1js';
 
-export { pkcs1v15Pad, bodyHashRegex };
+export { pkcs1v15Pad, bodyHashRegex, selectSubarray };
 
 /**
  * Creates a PKCS#1 v1.5 padded signature for the given SHA-256 digest.
@@ -151,4 +151,61 @@ function bodyHashRegex(input: UInt8[]) {
   reveal.push(reveal0);
 
   return { out, reveal };
+}
+
+/**
+ * Provably select a subarray from an array of field elements.
+ *
+ * @notice Output array length can be reduced by setting `subarrayLength`.
+ * @notice Based on https://demo.hedgedoc.org/s/Le0R3xUhB.
+ * 
+ * @param input - The input array.
+ * @param startIndex - The number of indices to shift the array to the left.
+ * @param subarrayLength - The maximum length of the output array.
+ * 
+ * @returns The shifted/selected subarray.
+ * @throws Will throw an error if `maxOutArrayLen` is greater than the input array length.
+ */
+function selectSubarray(
+  input: Field[],
+  startIndex: Field,
+  subarrayLength: number
+): UInt8[] {
+  const maxArrayLen = input.length;
+  assert(
+    subarrayLength <= maxArrayLen,
+    'Subarray length exceeds input array length!'
+  );
+
+  const bitLength = Math.ceil(Math.log2(maxArrayLen));
+  const shiftBits = startIndex.toBits(bitLength);
+  let tmp: Field[][] = Array.from({ length: bitLength }, () =>
+    Array.from({ length: maxArrayLen }, () => Field(0))
+  );
+
+  for (let j = 0; j < bitLength; j++) {
+    for (let i = 0; i < maxArrayLen; i++) {
+      let offset = (i + (1 << j)) % maxArrayLen;
+      // Shift left by 2^j indices if bit is 1
+      if (j === 0) {
+        tmp[j][i] = shiftBits[j]
+          .toField()
+          .mul(input[offset].sub(input[i]))
+          .add(input[i]);
+      } else {
+        tmp[j][i] = shiftBits[j]
+          .toField()
+          .mul(tmp[j - 1][offset].sub(tmp[j - 1][i]))
+          .add(tmp[j - 1][i]);
+      }
+    }
+  }
+
+  // Return last row
+  let out: UInt8[] = [];
+  for (let i = 0; i < subarrayLength; i++) {
+    out.push(UInt8.Unsafe.fromField(tmp[bitLength - 1][i]));
+  }
+
+  return out;
 }
