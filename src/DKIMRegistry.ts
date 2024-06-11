@@ -37,7 +37,7 @@ export class DKIMRegistry extends SmartContract {
         const initialRoot = this.mapRoot.get(); 
         this.mapRoot.requireEquals(initialRoot); 
 
-        const [rootAfter, _ ] = keyWitness.computeRootAndKey(domain); 
+        const [rootAfter, _ ] = keyWitness.computeRootAndKey(publicKeyHash); 
         this.mapRoot.set(rootAfter); 
 
         //const key = stringToField(domain);

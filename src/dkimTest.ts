@@ -30,17 +30,28 @@ console.log('DKIMRegistry deployed');
 const initialState = zkAppInstance.mapRoot.get();
 console.log('state after init:', initialState);
 
-// prepare txn1 
+// initialize test merklMap
 const map = new MerkleMap; 
 const rootBefore = map.getRoot(); 
-const key = Field(100); 
-const witness = map.getWitness(key); 
+console.log("rootBefore ", rootBefore); 
+
+// prepare txn1 
+const domain = Field(100); 
+const publicKeyHash = Field(50); 
+map.set(domain, publicKeyHash); 
+
+const rootAfter = map.getRoot(); 
+console.log("rootAfter ", rootAfter); 
+
+const witness = map.getWitness(domain); 
+//console.log("witness ", witness); 
+
 
 const txn1 = await Mina.transaction(deployerAccount, async () => {
   await zkAppInstance.setDKIMPublicKeyHash(
       witness, 
-      key, 
-      Field(5)
+      domain, 
+      publicKeyHash
   );
 });
 
@@ -50,6 +61,33 @@ await pendingTx.wait();
 
 // get the state after txn1
 const afterState = zkAppInstance.mapRoot.get();
-console.log('state after init:', afterState);
+console.log('state after tx1:', afterState);
+console.log('value for key: ', map.get(domain)); 
 
-console.log('value for key: ', map.get(key)); 
+
+// txn2 add another entry 
+const rootBeforeTx2 = map.getRoot(); 
+console.log("rootBeforetx2 ", rootBeforeTx2); 
+
+const domain2 = Field(111);
+const publicKeyHash2 = Field (222); 
+const witness2 = map.getWitness(domain2); 
+map.set(domain2, publicKeyHash2); 
+const rootAfter2 = map.getRoot(); 
+console.log("rootAfter2 ", rootAfter2); 
+
+const txn2 = await Mina.transaction(deployerAccount, async () => {
+  await zkAppInstance.setDKIMPublicKeyHash(
+      witness2, 
+      domain2, 
+      publicKeyHash2
+  );
+});
+await txn2.prove();
+const pendingTx2 = txn2.sign([deployerKey]).send();
+await pendingTx2.wait(); 
+
+// get the state after txn2
+const afterState2 = zkAppInstance.mapRoot.get();
+console.log('state after tx2:', afterState2);
+console.log('value for key: ', map.get(domain2)); 
