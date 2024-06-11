@@ -13,6 +13,7 @@ import {
 export class DKIMRegistry extends SmartContract {
     // domainName => public key hash
     @state(Field) mapRoot = State<Field>(); 
+    @state(Field) revokedRoot = State<Field>(); 
     // revoked public key hashes 
     //@state(Field) revokedDKIMPublicKeyHashes = State<Field>();
 
@@ -24,72 +25,49 @@ export class DKIMRegistry extends SmartContract {
         super.init();
         const merkleMap = new MerkleMap();
         this.mapRoot.set(merkleMap.getRoot());
+        const revokedMap = new MerkleMap(); 
+        this.revokedRoot.set(revokedMap.getRoot()); 
         //this.dkimPublicKeyHashes.set());
         //this.revokedDKIMPublicKeyHashes.set(Field(6));
     }
 
     @method async setDKIMPublicKeyHash(
         keyWitness: MerkleMapWitness,
+        //revokedKeyWitness: MerkleMapWitness,
         domain: Field, 
         publicKeyHash: Field) {
 
-        //const key = domain; 
+        //get current roots; 
         const initialRoot = this.mapRoot.get(); 
         this.mapRoot.requireEquals(initialRoot); 
 
+        // Check if the public key hash is not revoked
+        const revokedRoot = this.revokedRoot.get(); 
+        this.revokedRoot.requireEquals(revokedRoot); 
+        // checkRoot = keyWitness.computeRootAndKey
+
+        // update the merkle map with the new public key hash
         const [rootAfter, _ ] = keyWitness.computeRootAndKey(publicKeyHash); 
         this.mapRoot.set(rootAfter); 
-
-        //const key = stringToField(domain);
-        //const merkleMap = new MerkleMap();
-        
-        // Load the current MerkleMap state from the smart contract state
-        //const currentRoot = this.mapRoot.get();
-    
-        // // Ensure the public key hash is not revoked
-        // const existingValue = merkleMap.get(key);
-        // const isRevoked = existingValue.equals(Field(0)).not();
-        // isRevoked.assertEquals(Bool(false), 'Cannot set a revoked public key');
-    
-        // Set the new value in the MerkleMap
-
-        // merkleMap.set(key, publicKeyHash);
-        // const newRoot = merkleMap.getRoot();
-        // this.mapRoot.set(newRoot);
     }
 
-    // @method async getDKIMPublicKeyHash(domain: Field): Field {
-    //     const key = domain; 
-    //     //const key = stringToField(domain);
-    //     const merkleMap = new MerkleMap();
-        
-    //     // Load the current MerkleMap state from the smart contract state
-    //     const currentRoot = this.mapRoot.get();
-    //     merkleMap.loadFromRoot(currentRoot);
     
-    //     return merkleMap.get(key);
-    //   }
-    //     // Ensure the public key hash is not revoked
-    //     const isRevoked = this.revokedDKIMPublicKeyHashes.get().get(publicKeyHash) || Bool(false);
-    //     isRevoked.assertEquals(Bool(false), 'cannot set revoked pubkey');
-        
-    //     // Check if already registered? 
-    //     const HashExists = this.dkimPublicKeyHashes.get().get(domainName); 
-    
-    //     // Register the public key hash
+    @method async isDKIMPublicKeyHashValid(
+        witness: MerkleMapWitness, 
+        domain: Field, 
+        publicKeyHash: Field, 
+        ){
+        const mapRoot = this.mapRoot.get(); 
+        this.mapRoot.requireEquals(mapRoot); 
+        const [computedRoot, key] = witness.computeRootAndKey(publicKeyHash); 
+        this.mapRoot.requireEquals(computedRoot); 
+        //check domain required matches the witness key
+        key.assertEquals(domain); 
+    }
 
-    //     // this.dkimPublicKeyHashes.get().add(domainName, publicKeyHash);
-    //     // const hashesForDomain = domainHashes.get(domainName) || new Set<Field>();
-    //     // hashesForDomain.add(publicKeyHash);
-    //     // domainHashes.set(domainName, hashesForDomain);
-    
-    // }
+    // @method async revokeDKIMPublicKeyHash(publicKeyHash: Field) {
+    //}
 
-    // // @method async revokeDKIMPublicKeyHash(publicKeyHash: Field) {
-    // // }
-
-    // // @method async isDKIMPublicKeyHashValid(domainName: Field, publicKeyHash: Field): Bool {
-    // // }
 }
 
 

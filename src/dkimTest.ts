@@ -65,7 +65,7 @@ console.log('state after tx1:', afterState);
 console.log('value for key: ', map.get(domain)); 
 
 
-// txn2 add another entry 
+// txn2: add another entry 
 const rootBeforeTx2 = map.getRoot(); 
 console.log("rootBeforetx2 ", rootBeforeTx2); 
 
@@ -91,3 +91,34 @@ await pendingTx2.wait();
 const afterState2 = zkAppInstance.mapRoot.get();
 console.log('state after tx2:', afterState2);
 console.log('value for key: ', map.get(domain2)); 
+
+
+//txn3: check if entry is valid for a valid entry 
+const rootBeforeTx3 = map.getRoot(); 
+console.log("rootBeforetx3 ", rootBeforeTx3); 
+const txn3 = await Mina.transaction(deployerAccount, async () => {
+  await zkAppInstance.isDKIMPublicKeyHashValid(
+      witness2, 
+      domain2, 
+      publicKeyHash2
+  );
+});
+await txn3.prove();
+const pendingTx3 = txn3.sign([deployerKey]).send();
+await pendingTx3.wait(); 
+console.log("tnx3 completed: PublicKeyHash is valid"); 
+
+
+
+//txn4: check if entry is not valid for a not valid entry  
+const txn4 = await Mina.transaction(deployerAccount, async () => {
+  await zkAppInstance.isDKIMPublicKeyHashValid(
+      witness, 
+      domain2, 
+      publicKeyHash2
+  );
+});
+await txn4.prove();
+const pendingTx4 = txn3.sign([deployerKey]).send();
+await pendingTx4.wait(); 
+// should throw error 
