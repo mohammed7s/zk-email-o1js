@@ -156,16 +156,18 @@ function bodyHashRegex(input: UInt8[]) {
 /**
  * Provably select a subarray from an array of field elements.
  *
- * @notice Output array length can be reduced by setting `subarrayLength`.
+ * @notice The length of the output array can be reduced by setting `subarrayLength`.
  * @notice Based on https://demo.hedgedoc.org/s/Le0R3xUhB.
- * 
- * @param input - The input array.
- * @param startIndex - The number of indices to shift the array to the left.
- * @param subarrayLength - The maximum length of the output array.
- * 
- * @returns The shifted/selected subarray.
- * @throws Will throw an error if `maxOutArrayLen` is greater than the input array length.
+ * @notice Assumes field elements to be bytes in the input array.
+ *
+ * @param input - The input array of field elements.
+ * @param startIndex - The starting index for the subarray selection.
+ * @param subarrayLength - The length of the output subarray.
+ *
+ * @returns The selected subarray of bytes.
+ * @throws Will throw an error if `subarrayLength` is greater than the input array length.
  */
+
 function selectSubarray(
   input: Field[],
   startIndex: Field,
@@ -175,6 +177,12 @@ function selectSubarray(
   assert(
     subarrayLength <= maxArrayLen,
     'Subarray length exceeds input array length!'
+  );
+
+  // Assert startIndex is not zero
+  startIndex.assertNotEquals(
+    0,
+    'Subarray start index must be greater than zero!'
   );
 
   const bitLength = Math.ceil(Math.log2(maxArrayLen));
@@ -202,10 +210,19 @@ function selectSubarray(
   }
 
   // Return last row
-  let out: UInt8[] = [];
+  let subarray: UInt8[] = [];
   for (let i = 0; i < subarrayLength; i++) {
-    out.push(UInt8.Unsafe.fromField(tmp[bitLength - 1][i]));
+    const selectedByte = UInt8.Unsafe.fromField(tmp[bitLength - 1][i]);
+
+    // In the context of zk-regex, matched data consists of non-null bytes, while unmatched data consists of null bytes
+    // Assert that the subarray data doesn't contain a 0 (null) byte
+    selectedByte.value.assertNotEquals(
+      0,
+      'Selected subarray bytes should not contain null bytes!'
+    );
+
+    subarray.push(selectedByte);
   }
 
-  return out;
+  return subarray;
 }
