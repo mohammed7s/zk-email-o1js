@@ -1,16 +1,20 @@
 import { Field, Bytes } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
 import { verifyDKIMSignature } from '@zk-email/helpers/dist/dkim/index.js';
+import { dynamicSHA256Pad, generatePartialSHA256Inputs } from 'sha256-dynamic';
 
 export { generateInputs, EmailVerifyInputs };
 
 type EmailVerifyInputs = {
-  headers: Bytes;
+  paddedHeader: Bytes;
+  headerHashIndex: Field;
   signature: Bigint2048;
   publicKey: Bigint2048;
   modulusLength: number;
+  paddedBodyRemainingBytes: Bytes;
+  precomputedHash: Bytes;
   bodyHashIndex: Field;
-  body: Bytes;
+  headerBodyHashIndex: Field;
 };
 
 /**
@@ -19,22 +23,47 @@ type EmailVerifyInputs = {
  * @param rawEmail The raw email string.
  * @returns The email verification inputs.
  */
-async function generateInputs(rawEmail: string): Promise<EmailVerifyInputs> {
+async function generateInputs(
+  rawEmail: string,
+  maxHeaderLength = 1024,
+  maxRemainingBodyLength = 1536,
+  shaPrecomputeSelector?: string
+): Promise<EmailVerifyInputs> {
   // Parse raw email and retrieve public key of the domain in header
   const dkimResult = await verifyDKIMSignature(Buffer.from(rawEmail));
 
-  // Extract components from DKIM result
-  const headers = Bytes.from(dkimResult.headers);
+  const [paddedHeader, headerHashIndex] = dynamicSHA256Pad(
+    dkimResult.headers,
+    maxHeaderLength
+  );
+
   const signature = Bigint2048.from(dkimResult.signature);
   const publicKey = Bigint2048.from(dkimResult.publicKey);
 
   const modulusLength = dkimResult.modulusLength;
 
-  // const headerBodyHash = Bytes.fromString(dkimResult.bodyHash);
-  const bodyHashIndex = Field(
+  const {
+    precomputedHash,
+    messageRemainingBytes: paddedBodyRemainingBytes,
+    outputHashIndex: bodyHashIndex,
+  } = generatePartialSHA256Inputs(
+    dkimResult.body,
+    maxRemainingBodyLength,
+    shaPrecomputeSelector
+    );
+  const headerBodyHashIndex = Field(
     dkimResult.headers.toString().indexOf(dkimResult.bodyHash) - 1
   );
-  const body = Bytes.from(new Uint8Array(dkimResult.body));
 
-  return { headers, signature, publicKey, modulusLength, bodyHashIndex, body };
+  return {
+    paddedHeader,
+    headerHashIndex,
+    signature,
+    publicKey,
+    modulusLength,
+    paddedBodyRemainingBytes,
+    precomputedHash,
+    bodyHashIndex,
+    headerBodyHashIndex,
+  };
 }

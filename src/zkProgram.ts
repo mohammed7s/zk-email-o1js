@@ -7,10 +7,11 @@ import fs from 'fs';
 const filePath = './eml/email.eml';
 const rawEmail = fs.readFileSync(filePath, 'utf8');
 
-// TODO create generic ZKProgram function at runtime
 const inputs = await generateInputs(rawEmail);
-class HeadersBytes extends Bytes(inputs.headers.length) {}
-class BodyBytes extends Bytes(inputs.body.length) {}
+
+class HeadersBytes extends Bytes(1024) {}
+class BodyBytes extends Bytes(1536) {}
+class Bytes32 extends Bytes(32) {}
 
 let verifyEmailZkProgram = ZkProgram({
   name: 'verify-email',
@@ -18,27 +19,36 @@ let verifyEmailZkProgram = ZkProgram({
     verifyEmail: {
       privateInputs: [
         HeadersBytes.provable,
-        Bigint2048,
-        Bigint2048,
         Field,
+        Bigint2048,
+        Bigint2048,
         BodyBytes.provable,
+        Bytes32.provable,
+        Field,
+        Field,
       ],
 
       async method(
-        headers: HeadersBytes,
+        paddedHeader: Bytes,
+        headerHashIndex: Field,
         signature: Bigint2048,
         publicKey: Bigint2048,
+        paddedBodyRemainingBytes: Bytes,
+        precomputedHash: Bytes,
         bodyHashIndex: Field,
-        body: BodyBytes
+        headerBodyHashIndex: Field
       ) {
         emailVerify(
-          headers,
+          paddedHeader,
+          headerHashIndex,
           signature,
           publicKey,
           1024,
           true,
+          paddedBodyRemainingBytes,
+          precomputedHash,
           bodyHashIndex,
-          body
+          headerBodyHashIndex
         );
       },
     },
@@ -56,11 +66,14 @@ console.timeEnd('compile');
 console.time('prove');
 
 let proof = await verifyEmailZkProgram.verifyEmail(
-  inputs.headers,
+  inputs.paddedHeader,
+  inputs.headerHashIndex,
   inputs.signature,
   inputs.publicKey,
+  inputs.paddedBodyRemainingBytes,
+  inputs.precomputedHash,
   inputs.bodyHashIndex,
-  inputs.body
+  inputs.headerBodyHashIndex
 );
 console.timeEnd('prove');
 

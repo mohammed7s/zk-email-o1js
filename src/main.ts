@@ -19,13 +19,16 @@ async function main(rawEmail: string) {
   const inputs = await generateInputs(rawEmail);
   // Call the provable emailVerify function with parsed input
   emailVerify(
-    inputs.headers,
+    inputs.paddedHeader,
+    inputs.headerHashIndex,
     inputs.signature,
     inputs.publicKey,
     inputs.modulusLength,
-    true,
+    false,
+    inputs.paddedBodyRemainingBytes,
+    inputs.precomputedHash,
     inputs.bodyHashIndex,
-    inputs.body
+    inputs.headerBodyHashIndex
   );
 }
 
