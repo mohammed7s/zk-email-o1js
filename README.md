@@ -1,116 +1,193 @@
 # Zk Email o1js
 
-ZK Email is an o1js library that can be used to verify authenticity of email signatures from specific domains in addition to verifying the specific text of the email body within a mina smart contract.
+ZK Email is an o1js library that allows for verification of email DKIM signatures and selective text from
+the body of a sent or received email. The library also acts as a toolkit for the app developer who wishes to incorporate email verification functionality in their o1js/Mina applications.
 
-## About ZK Email o1js
+This project is an o1js implementation of [zk-email](https://github.com/zkemail/zk-email-verify). o1js uses the Mina proving system [Kimchi- inser link]() for its circuits and offers an alternative implementation to circom and halo2 based implementations. 
 
-This project is an o1js implementation using the Mina proving system kimchi of the circom based zk-email [library](https://github.com/zkemail/zk-email-verify). Strongly recommend reading the following resources about the project:
+Moreover, since the whole execution environment is a zk circuit, o1js allows for writing write smart contracts and other circuit logic in one language. 
 
-- https://zkemail.gitbook.io/zk-email/
-- https://blog.aayushg.com/zkemail/
-- https://github.com/zkemail
 
-### How to build
+## Quickstart 
 
-```sh
-npm run build
+#### To quickly check validity of an eml file 
+
+1. Place raw email (.eml) file in /eml folder 
+2. Modify the VARIABLE of the file in eml-check.ts
+
+```
+const filePath = path.join(__dirname, '../../eml/email.eml');
 ```
 
-### How to run
-
-To run with any email, download raw email file (.eml) and place in /eml folder
-change `email.eml` to required email file in this line in main.ts `const filePath = path.join(__dirname, '../../eml/email.eml');`
+3. Build and run
 
 ```sh
-node build/src/main.js
-```
+npm run build && node build/src/main.js 
 
-### How to run tests
+```
+This will process the .eml file, and generate inputs for the circuit, then calls the `verify_email` function to validate the inputs in o1js environment.  
+
+#### To use as toolkit for developing an o1js application with email verification functionality
+
+ follow these steps: 
+
+1. Generate the Regex circuit 
+2. Write the smart contract logic
+3. Generate circuit inputs from raw eml file (frontend)
+
+A more thorough guide on developing an application is in this file along with a tutorial. 
+
+
+#### To run tests & coverage
 
 ```sh
 npm run test
 npm run testw # watch mode
+
 ```
-
-### How to run coverage
-
 ```sh
 npm run coverage
 
 ```
 
-### FAQs
 
-1. `Error: DKIM signature verification failed for domain androidloves.me. Reason: DNS failure: ESERVFAIL`
-   This is an internet issue. try a different internet connection or disable vpn if enabled.
+#### To run benchmarks 
+
+
+
+
+
+
+
+
+
+## Library guide 
+
+/`email-verify.ts`   
+contains the core functionality of the library. It verifies a DKIM signature using the provided message, signature, and public key. It also checks the body hash if it matches the one in the header. 
+
+The input can take bodyHashCheck = true or false 
+
+At its core, it verifies the signature using RSA siganture. The RSAVerify
+represents the 
+
+
+/`generate-inputs.ts`  
+contains the preprocessing of the raw email file (.eml) 
+Purpose: used in an application's frontend to handle the eml file. 
+
+/`zkapp.ts`  
+e2e example of a twitter handle verification in smart contract. Use this as a template or reference for an application implementation. 
+
+/`main.ts`  
+change name to `eml-check.ts`
+Purpose: This file can be used is a basic function test for an eml file. 
+
+/`utils.ts`  
+Purpose: has a bunch of supporting utils for functionality of the library. 
+
+
+## Dependencies 
+
+#### zk-email helpers  
+We utilize the offchain [helpers](https://github.com/zkemail/zk-email-verify/tree/5613d743773927fa4fbee1472b6aed6bde34a6cc/packages/helpers) from the zkemail library, particularly the DKIM parser class to generate the inputs that would go in the circuit. This is implemented in the `generate-inputs.ts` file. The choice to use the original zk email library helpers to generate inputs is that we can benefit from code audits and better compatibility with other zk-email apps in the future.
+
+#### zk-regex-o1js
+
+#### RSA-o1js
+
+#### Base64-o1js    
+
+Comment about: Dynamic and updateable SHA
+
+
+## [How ZK Email Works](/docs/how_zkemail_works.md)
+
+
+## References  
+
+- https://zkemail.gitbook.io/zk-email/
+- https://blog.aayushg.com/zkemail/
+- https://github.com/zkemail
+
+## Benchmark 
+
+## Contribution 
+
+How to contribute:
+-submit issues 
+-submit PRs 
+
+Regex standards for different emails. We would like to keep email library of Regex's. 
+
+
+## Acknowledgment
+zk-email team who led the way and ventured and provided a well documented library, and documentation, and who were quick and responsive to answer our questions on the telegram group. 
+
+Mina foundation for funding the zkignite series 
+zkignite participants who have helped like Rahul, Lauri, 
+
+
+o1js labs (gregor, florian, and others) for mentorship and guidance 
+
+
+
+## Known problems 
+
+- Hotmail and protonmail not working 
+
+
+## Further development // directions 
+
+- Compute and add domain check regex function
+- RFC compliance of the email verify standard for DKIM. 
+- develop a universal DKIM registry for the Mina ecosystem with incentivized oracle network of DNS servers.
+- Handling very large emails: kimchi is ideal for recursion and would be cool to experiment with very large emails.   
+
+
+## Feedback
+email  
+telegram  
+form   
+submit an issue 
+
+
+
+## Support 
+
+The project is a public good project. 
+
+Mina multisig address: 
+
+The funds will be used for the development of the following milestones
+
 
 ## License
 
 [Apache-2.0](LICENSE)
 
-## How ZK Email works
 
-Most emails today are signed by the domain that sent it using a public key infrastructure (a public and private key pairs) like RSA. The domain to public key mapping is kept in the public DNS registry. Email mailboxes use this to verify the identity of email senders to detect phishing and scam attempts and that the original message has not been tampered with in transit.
 
-These signatures are known as DKIM (DomainKeys Identified Mail) signatures.The standard for DKIM signatures is formalized in an internet standard [RFC 6337](https://datatracker.ietf.org/doc/html/rfc6376). This standard is maintained by the IETF (a non profit since 1993). The signature scheme used is RSA. The standard specifies which parts of the emails are signed and how data is formatted.
 
-An example of dkim signature found in the header of an email:
 
-```
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=androidloves.me;
-	s=2019022801; t=1584218937;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=aeLbTnlUQQv2UFEWKHeiL5Q0NjOwj4ktNSInk8rN/P0=;
-	b=eJPHovlwH6mU2kj8rEYF2us6TJwQg0/T7NbJ6A1zHNbVJ5UJjyMOfn+tN3R/oSsBcSDsHT
-	xGysZJIRPeXEEcAOPNqUV4PcybFf/5cQDVpKZtY7kj/SdapzeFKCPT+uTYGQp1VMUtWfc1
-	SddyAZSw8lHcvkTqWhJKrCU0EoVAsik=
-```
 
-v: version of the DKIM key record
-a: The algorithm used for hashing (sha256) and signing (RSA)  
-c: message canocicalization: how is message formatted before signing  
-d: domain used for the DNS lookup  
-s: Selector for the public key  
-t: signature timestamp  
-h: header fields used as message in signature  
-bh: body hash of body in base64 encoded  
-b: base64 encoded signature
 
-To verify a DKIM signature we follow these steps:
 
-1. query the DNS server to obtain the public key of a domain using s and d. It returns a p value for public key that looks like this:
 
-```
-"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCcaywJn59dbp7TbRiDsVloBdCsgl9wAEvHo9WCDSNRqDJjkF1Fjy44Q4emckHP/Tv7hJdIlBtV8hEw5zGD+/kKkhnlx04BSYqXuxed1nOq6FDjNTIR6TmHetMfVU1IcO7ewyJZp5/2uM64JmTDh2u3ed4+JR7jqFE2e/ZqBTM1iQIDAQAB"
-```
 
-2. determine the header which is the message that is signed based which is given by the parameter h
-3. hash the header
-4. format using pkcs1.5
-5. verify the RSA signature using the signature s, public key p and the hashed header obtained from previous step.
+### FAQs
 
-To also check the body hash: 6) calculate the hash of the body from b 7) compare the hash with the base64 decoded value bh from the DKIM-signature header of the email
+1. What is zkemail exactly? Its the technique of 
+2. `Error: DKIM signature verification failed for domain androidloves.me. Reason: DNS failure: ESERVFAIL`
+   This is an internet issue. try a different internet connection or disable vpn if enabled.
+
+
+
 
 These steps are summarized in the following diagram:
 
 ![alt text](zkEmail-architecture.png)
 
-TODO: explain how the Regex works and how its used along the DKIM signature to verify specific parts of the body
 
-## ZK email o1js Implementation details
 
-### External libraries
 
-We utilize the offchain [helpers](https://github.com/zkemail/zk-email-verify/tree/5613d743773927fa4fbee1472b6aed6bde34a6cc/packages/helpers) from the zkemail library, particularly the DKIM parser class to generate the inputs that would go in the circuit. This is implemented in the `generate-inputs.ts` file. The choice to use the original zk email library helpers to generate inputs is that we can benefit from code audits and better compatibility with other zk-email apps in the future.
-
-### Components
-
-- o1js-rsa: Used to verify the DKIM signature.
-- o1js-base64: Used to base64 encode/decode ASCII bytes.
-- zk-regex-o1js: Use to process string bytes inside a kimchi circuit.
-
-###
-
-<!-- ### Benchmarks/ Performance  -->
