@@ -61,6 +61,7 @@ function twitterInputRegex(input: UInt8[]) {
     <insert generated circuit code here> 
 }
 
+```
 
 Note: This function can be pasted in the same file where the smart contract logic is or in a seperate file that is imported. You will notice some general regex functions used in the email verification are already generated and included in the utils.ts file. This is because we use regex library to also validate some information about the signed headers. (Read here if you wish to understand how zkemail signatures verifcation works under the hood)
 
