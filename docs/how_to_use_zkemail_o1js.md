@@ -4,9 +4,11 @@ The zkemail-o1js library is a toolkit for the app developer who wishes to incorp
 
 1. Generate the Regex circuit 
 2. Write the smart contract logic
-3. Generate circuit inputs from raw eml file (frontend)
+3. incorporate circuit inputs from raw eml file (frontend)
 
-We will go into each step in detail and attempt to walkthrough a twitter handle verification example. 
+We will go into each step in detail and attempt to walkthrough a simple twitter handle verification example. 
+
+
 
 ### Installation 
 

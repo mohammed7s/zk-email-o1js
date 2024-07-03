@@ -22,7 +22,7 @@ The domain to public key mapping is stored in the DNS records of the domain. The
 Most emails today are signed by the domain that sent it using a public key infrastructure (a public and private key pair) like [RSA](https://cryptobook.nakov.com/digital-signatures/rsa-signatures)  for example.  Email mailboxes use the email signature to verify the identity of email senders to detect phishing and scam attempts and that the original message has not been tampered with in transit.
  
 
-![alt text](image-2.png)
+![alt text](email-infra.png)
 
 
 ## What we want from Emails?
@@ -80,7 +80,11 @@ Another check that is usually performed as an extra measure is the body hash che
 7. compare the hash with the base64 decoded value bh from the DKIM-signature header of the email 
 
 These steps are summarized in the following diagram:
-![alt text](zkEmail-architecture.png)
+
+![alt text](DKIM-process.png)
+
+![alt text](../zkEmail-architecture.png)
+
 
 ## Regex Circuits 
 
