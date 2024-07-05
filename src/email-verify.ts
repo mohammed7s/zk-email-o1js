@@ -1,7 +1,7 @@
 import { Field, Bytes, Provable } from 'o1js';
 import { Bigint2048, rsaVerify65537 } from 'o1js-rsa';
 import { pkcs1v15Pad, bodyHashRegex, selectSubarray } from './utils.js';
-import { dynamicSHA256, partialSHA256 } from 'sha256-dynamic';
+import { dynamicSHA256, partialSHA256 } from 'dynamic-sha256';
 
 export { emailVerify };
 

@@ -1,7 +1,7 @@
 import { Field, Bytes } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
 import { verifyDKIMSignature } from '@zk-email/helpers/dist/dkim/index.js';
-import { dynamicSHA256Pad, generatePartialSHA256Inputs } from 'sha256-dynamic';
+import { dynamicSHA256Pad, generatePartialSHA256Inputs } from 'dynamic-sha256';
 
 export { generateInputs, EmailVerifyInputs };
 
@@ -45,12 +45,12 @@ async function generateInputs(
   const {
     precomputedHash,
     messageRemainingBytes: paddedBodyRemainingBytes,
-    outputHashIndex: bodyHashIndex,
+    digestIndex: bodyHashIndex,
   } = generatePartialSHA256Inputs(
     dkimResult.body,
     maxRemainingBodyLength,
     shaPrecomputeSelector
-    );
+  );
   const headerBodyHashIndex = Field(
     dkimResult.headers.toString().indexOf(dkimResult.bodyHash) - 1
   );
