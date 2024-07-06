@@ -34,9 +34,10 @@ function emailVerify(
   bodyHashIndex: Field,
   headerBodyHashIndex: Field
 ) {
-  // Hash the email headers
-  const headerHash = dynamicSHA256(paddedHeader, headerHashIndex); // Hash the headers using o1js
-  const paddedHash = pkcs1v15Pad(headerHash, Math.ceil(modulusLength / 8)); // PKCS#1 v1.5 encode the hash
+  // Hash the email headers // 92675 rows for a 1024-byte input
+  const headerHash = dynamicSHA256(paddedHeader, headerHashIndex);
+  // PKCS#1 v1.5 encode the hash
+  const paddedHash = pkcs1v15Pad(headerHash, Math.ceil(modulusLength / 8));
 
   // Create message for verification
   const message = Provable.witness(Bigint2048, () => {
@@ -44,26 +45,26 @@ function emailVerify(
     return Bigint2048.from(BigInt(hexString));
   });
 
-  // Verify RSA65537 signature
+  // Verify RSA65537 signature // 12401 rows
   rsaVerify65537(message, signature, publicKey);
 
   // 2. Check body hash
   if (bodyHashCheck) {
-    // Hash the body
+    // Compute the partial hash of the body // 139074 rows for a 1536-byte input
     const computedBodyHash = partialSHA256(
       precomputedHash,
       paddedBodyRemainingBytes,
       bodyHashIndex
     );
 
-    // Base64 encode the computed body hash
+    // Base64 encode the computed body hash // 1697 rows for a 32-byte input
     const encodedBodyHash = computedBodyHash.base64Encode();
 
-    // Reveal the body hash from the email headers using regex
+    // Reveal the body hash from the email headers using regex // 86453 rows for a 1024-byte input
     const { out, reveal } = bodyHashRegex(paddedHeader.bytes);
     out.assertEquals(1);
 
-    // Select the body hash bytes subarray
+    // Select the body hash bytes subarray // 59133 rows for a 1024-byte input
     const headerBodyHash = Bytes.from(
       selectSubarray(reveal[0], headerBodyHashIndex, 44)
     );
