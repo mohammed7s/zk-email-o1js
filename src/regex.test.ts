@@ -3,6 +3,15 @@ import { bodyHashRegex, selectSubarray } from './utils';
 import fs from 'fs';
 import { verifyDKIMSignature } from '@zk-email/helpers/dist/dkim';
 
+/**
+ * Converts an array of UTF-8 encoded bytes (represented as bigints) into a string.
+ *
+ * This function handles single-byte (ASCII), two-byte, three-byte, and four-byte UTF-8 characters.
+ * It processes the bytes, constructs the corresponding Unicode code points, and converts them into a string.
+ *
+ * @param bytes - An array of bigints representing UTF-8 encoded bytes.
+ * @returns The decoded string from the UTF-8 bytes.
+ */
 function utf8BytesToString(bytes: bigint[]): string {
   let utf8String = '';
   let codepoint = 0;
@@ -40,6 +49,14 @@ function utf8BytesToString(bytes: bigint[]): string {
   return utf8String;
 }
 
+/**
+ * Tests the `bodyHashRegex` function by verifying the count of matching patterns
+ * and the revealed substring, if provided.
+ *
+ * @param input - The input string to be tested.
+ * @param expectedCount - The expected count of matching patterns.
+ * @param expectedSubstring - Optional. The expected substring to be revealed by the regex.
+ */
 function testBodyHashRegex(
   input: string,
   expectedCount: number,
