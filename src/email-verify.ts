@@ -1,4 +1,4 @@
-import { Field, Bytes, Provable } from 'o1js';
+import { Field, Bytes, Provable, Poseidon } from 'o1js';
 import { Bigint2048, rsaVerify65537 } from 'o1js-rsa';
 import { pkcs1v15Pad, bodyHashRegex, selectSubarray } from './utils.js';
 import { dynamicSHA256, partialSHA256 } from 'dynamic-sha256';
@@ -21,6 +21,7 @@ export { emailVerify };
  * @param precomputedHash - The precomputed hash as Bytes.
  * @param bodyHashIndex - The index of the body hash within the headers as Field.
  * @param headerBodyHashIndex - The index of the body hash within the header hash as Field.
+ * @returns - The public key hash.
  */
 function emailVerify(
   paddedHeader: Bytes,
@@ -33,17 +34,12 @@ function emailVerify(
   precomputedHash: Bytes,
   bodyHashIndex: Field,
   headerBodyHashIndex: Field
-) {
+): Field {
   // Hash the email headers // 92675 rows for a 1024-byte input
   const headerHash = dynamicSHA256(paddedHeader, headerHashIndex);
   // PKCS#1 v1.5 encode the hash
-  const paddedHash = pkcs1v15Pad(headerHash, Math.ceil(modulusLength / 8));
 
-  // Create message for verification
-  const message = Provable.witness(Bigint2048, () => {
-    const hexString = '0x' + paddedHash.toHex();
-    return Bigint2048.from(BigInt(hexString));
-  });
+  const message = pkcs1v15Pad(headerHash, Math.ceil(modulusLength / 8));
 
   // Verify RSA65537 signature // 12401 rows
   rsaVerify65537(message, signature, publicKey);
@@ -72,4 +68,7 @@ function emailVerify(
     // Assert that the computed body hash matches the regex-fetched body hash from the header
     Provable.assertEqual(encodedBodyHash, headerBodyHash);
   }
+
+  const publickeyhash = Poseidon.hash(publicKey.fields);
+  return publickeyhash;
 }
