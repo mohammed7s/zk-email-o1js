@@ -1,18 +1,19 @@
-import { Field, Bool, UInt8, Bytes, assert } from 'o1js';
+import { Field, Bool, UInt8, Bytes, assert, Provable } from 'o1js';
+import { Bigint2048 } from 'o1js-rsa';
 
 export { pkcs1v15Pad, bodyHashRegex, selectSubarray };
 
 /**
- * Creates a PKCS#1 v1.5 padded signature for the given SHA-256 digest.
+ * Creates a PKCS#1 v1.5 padded message for the given SHA-256 digest.
  *
  * @note This function follows the RFC3447 standard: https://datatracker.ietf.org/doc/html/rfc3447#section-9.2
  *
  * @param sha256Digest The SHA-256 digest to be padded.
  * @param modulusLength The size of the RSA modulus in bytes.
- * @returns The padded PKCS#1 v1.5 signature.
+ * @returns The padded PKCS#1 v1.5 message.
  */
-function pkcs1v15Pad(sha256Digest: Bytes, modulusLength: number): Bytes {
-  // Parse the PKCS#1 v1.5 algorithm constant
+function pkcs1v15Pad(sha256Digest: Bytes, modulusLength: number) {
+  // Algorithm identifier (OID) for SHA-256 in PKCS#1 v1.5 padding
   const algorithmConstantBytes = Bytes.fromHex(
     '3031300d060960864801650304020105000420'
   ).bytes;
@@ -26,18 +27,36 @@ function pkcs1v15Pad(sha256Digest: Bytes, modulusLength: number): Bytes {
 
   // Assemble the PKCS#1 v1.5 padding components
   const padding = [
-    ...Bytes.fromHex('0001').bytes,  // Block type (BT)
-    ...paddingString.bytes,          // Padding string (PS)
-    ...Bytes.fromHex('00').bytes,    // Separator (00)
-    ...algorithmConstantBytes,       // Algorithm identifier (OID)
-    ...sha256Digest.bytes,           // SHA-256 digest
+    ...Bytes.fromHex('0001').bytes, // Block type (BT) 00 01
+    ...paddingString.bytes, // Padding string (PS)
+    ...Bytes.fromHex('00').bytes, // Separator byte 00
+    ...algorithmConstantBytes, // Algorithm identifier (OID)
+    ...sha256Digest.bytes, // SHA-256 digest
   ];
 
-  // Return the padded PKCS#1 v1.5 signature
-  return Bytes.from(padding);
+  // Convert the padded message to a byte array
+  const paddedHash = Bytes.from(padding);
+
+  // Create a Bigint2048 witness from the padded hash
+  const message = Provable.witness(Bigint2048, () => {
+    const hexString = '0x' + paddedHash.toHex();
+    return Bigint2048.from(BigInt(hexString));
+  });
+
+  return message;
 }
 
-// bh=([a-zA-Z0-9]|\\+|/|=)+;
+/**
+ * Scans the input ASCII bytes for a matching body hash pattern.
+ *
+ * @note This function is compiled using the o1js zk-regex compiler: https://github.com/Shigoto-dev19/zk-regex-o1js
+ *       The regex pattern used is `bh=([a-zA-Z0-9]|\\+|/|=)+;`, revealing only base64 characters `([a-zA-Z0-9]|\\+|/|=)+` with `countEnabled` set to true.
+ *
+ * @param input The input array of UInt8 bytes to be scanned.
+ * @returns An object containing:
+ *          - `out`: A Field representing the matching count (1 or more if found, 0 otherwise).
+ *          - `reveal`: An array of Field arrays, revealing the base64 characters upon pattern match.
+ */
 function bodyHashRegex(input: UInt8[]) {
   const num_bytes = input.length;
   let states: Bool[][] = Array.from({ length: num_bytes + 1 }, () => []);
