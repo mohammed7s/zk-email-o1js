@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { Field, Bytes, UInt8 } from 'o1js';
+import { Bytes, UInt8 } from 'o1js';
 import { Bigint2048 } from 'o1js-rsa';
 import { emailVerify } from './email-verify.js';
 import { EmailVerifyInputs, generateInputs } from './generate-inputs.js';
@@ -67,8 +67,36 @@ describe('emailVerify: email-good', () => {
     testEmailVerify(inputs, false);
   });
 
+  it('should fail if the DKIM message (headers) is tampered with', async () => {
+    const tamperedHeaderBytes = Bytes.from([
+      ...Bytes(64).random().bytes,
+      ...inputs.paddedHeader.bytes,
+    ]);
+    const tamperedInputs = { ...inputs, paddedHeader: tamperedHeaderBytes };
+
+    // Error message stemming from dynamic SHA256 padding
+    const errorMessage = 'Padding error at index 161: expected zero.';
+    testEmailVerify(tamperedInputs, true, errorMessage);
+    testEmailVerify(tamperedInputs, false, errorMessage);
+  });
+
+  it('should fail if the headerHashIndex is tampered with', async () => {
+    const tamperedHeaderHashIndex = inputs.headerHashIndex.add(1);
+    const tamperedInputs = {
+      ...inputs,
+      headerHashIndex: tamperedHeaderHashIndex,
+    };
+
+    // If headerHashIndex is incorrect, the computed message hash will be incorrect,
+    // leading to the failure of RSA signature verification.
+    const errorMessage =
+      'Field.assertEquals(): 47747604729107447858111623096549830 != 49157264413748767276814317779506976';
+    testEmailVerify(tamperedInputs, true, errorMessage);
+    testEmailVerify(tamperedInputs, false, errorMessage);
+  });
+
   //TODO Update RSA verification to throw meaningful error messages
-  it('should fail if the DKIM signature is wrong', async () => {
+  it('should fail if the DKIM signature is tampered with', async () => {
     // Use a random invalid DKIM signature
     const invalidSignature = Bigint2048.from(1234567n);
     const tamperedInputs = { ...inputs, signature: invalidSignature };
@@ -79,15 +107,26 @@ describe('emailVerify: email-good', () => {
     testEmailVerify(tamperedInputs, false, errorMessage);
   });
 
-  it('should fail if DKIM message (headers) is tampered with', async () => {
-    const tamperedHeaderBytes = Bytes.from([
-      ...Bytes(64).random().bytes,
-      ...inputs.paddedHeader.bytes,
-    ]);
-    const tamperedInputs = { ...inputs, paddedHeader: tamperedHeaderBytes };
+  it('should fail if the publicKey is tampered with', async () => {
+    // Use a random invalid public key for DKIM signature verification
+    const invalidPublicKey = Bigint2048.from(12345678910111213n);
+    const tamperedInputs = { ...inputs, publicKey: invalidPublicKey };
 
-    // Error message stemming from dynamic SHA256 padding
-    const errorMessage = 'Padding error at index 161: expected zero.';
+    // An incorrect public key leads to RSA verification failure.
+    const errorMessage =
+      'Field.assertEquals(): 49157264413748767276814317779506976 != 7907045731297294';
+    testEmailVerify(tamperedInputs, true, errorMessage);
+    testEmailVerify(tamperedInputs, false, errorMessage);
+  });
+
+  it('should fail if the modulusLength is non-compliant', async () => {
+    const incorrectModulusLength = 2048;
+    const tamperedInputs = { ...inputs, modulusLength: incorrectModulusLength };
+
+    // An incorrect modulus length results in non-compliant PKCS#1 v1.5 padding, affecting the hashed message integrity
+    // leading to RSA signature verification failure.
+    const errorMessage =
+      'Field.assertEquals(): 83076749736557242056487941267521535 != 2417851639229258349412351';
     testEmailVerify(tamperedInputs, true, errorMessage);
     testEmailVerify(tamperedInputs, false, errorMessage);
   });
@@ -110,12 +149,26 @@ describe('emailVerify: email-good', () => {
 
   //TODO Update bodyHash assertion to throw a meaningful error message
   it('should fail if the email bodyHashIndex is false', async () => {
-    // Tamper with the body hash
-    const falseBodyHashIndex = Field(33);
+    // Tamper with the bodyHash index
+    const falseBodyHashIndex = inputs.bodyHashIndex.add(1);
     const tamperedInputs = { ...inputs, bodyHashIndex: falseBodyHashIndex };
 
-    // Error message stemming from non-compliant bodyHash assertion
-    const errorMessage = 'Field.assertEquals(): 56 != 97';
+    // Error message indicating a failed assertion for non-compliant bodyHash
+    const errorMessage = 'Field.assertEquals(): 101 != 97';
+    testEmailVerify(tamperedInputs, false, errorMessage);
+  });
+
+  it('should fail if the email headerBodyHashIndex is false', async () => {
+    // headerBodyHashIndex marks the starting index of the body hash within the header bytes
+    const falseHeaderBodyHashIndex = inputs.headerBodyHashIndex.add(1);
+    const tamperedInputs = {
+      ...inputs,
+      headerBodyHashIndex: falseHeaderBodyHashIndex,
+    };
+
+    // Error message indicating that the body hash fetched with zk-regex does not match the expected body hash index in the headers
+    const errorMessage =
+      'Selected subarray bytes should not contain null bytes!';
     testEmailVerify(tamperedInputs, false, errorMessage);
   });
 });
