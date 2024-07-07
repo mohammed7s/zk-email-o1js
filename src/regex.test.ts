@@ -60,9 +60,17 @@ function testBodyHashRegex(
 }
 
 describe('Body Hash Regex Tests', () => {
+  let emailString: string;
+  beforeAll(async () => {
+    emailString = fs.readFileSync('./eml/email-good.eml', 'utf8');
+  });
+
   it('should reveal the correct body hash from an eml file', () => {
-    const input = fs.readFileSync('./eml/email.eml', 'utf8');
-    testBodyHashRegex(input, 1, 'aeLbTnlUQQv2UFEWKHeiL5Q0NjOwj4ktNSInk8rN/P0=');
+    testBodyHashRegex(
+      emailString,
+      1,
+      'aeLbTnlUQQv2UFEWKHeiL5Q0NjOwj4ktNSInk8rN/P0='
+    );
   });
 
   it('should reveal the correct body hash from a random string', () => {
@@ -75,8 +83,8 @@ describe('Body Hash Regex Tests', () => {
   });
 
   it('should reject an input with two matching body hash patterns', () => {
-    let input = fs.readFileSync('./eml/email.eml', 'utf8');
-    input += 'bh=2JsdK4BMzzt9w4Zlz2TdyVCFc+l7vNyT5aAgGDYf7fM=;';
+    let input =
+      emailString + 'bh=2JsdK4BMzzt9w4Zlz2TdyVCFc+l7vNyT5aAgGDYf7fM=;';
     expect(() => testBodyHashRegex(input, 1)).toThrow();
   });
 
@@ -111,8 +119,9 @@ describe('Body Hash Regex Tests', () => {
   });
 
   it('should select the correct revealed body hash bytes from an eml file', async () => {
-    const input = fs.readFileSync('./eml/email.eml', 'utf8');
-    const { headers, bodyHash } = await verifyDKIMSignature(Buffer.from(input));
+    const { headers, bodyHash } = await verifyDKIMSignature(
+      Buffer.from(emailString)
+    );
 
     const { out, reveal } = bodyHashRegex(Bytes.from(headers).bytes);
     expect(out).toEqual(Field(1));

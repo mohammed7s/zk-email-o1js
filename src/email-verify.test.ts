@@ -8,7 +8,7 @@ describe('emailVerify', () => {
   let inputs: EmailVerifyInputs;
 
   beforeAll(async () => {
-    const rawEmail = fs.readFileSync('./eml/email.eml', 'utf8');
+    const rawEmail = fs.readFileSync('./eml/email-good.eml', 'utf8');
     inputs = await generateInputs(rawEmail);
   });
 
