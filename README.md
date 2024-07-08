@@ -1,208 +1,213 @@
-# Zk Email o1js
+# ZK Email O1JS
 
-ZK Email is an o1js library that allows for verification of email DKIM signatures and selective text from
-the body of a sent or received email. The library also acts as a toolkit for the app developer who wishes to incorporate email verification functionality in their o1js/Mina applications.
+Implemented using [o1js](https://github.com/o1-labs/o1js), this project is a reimplementation of [zk-email](https://github.com/zkemail/zk-email-verify), leveraging the Mina proving system [Kimchi](https://o1-labs.github.io/proof-systems/specs/kimchi.html#kimchi).
 
-This project is an o1js implementation of [zk-email](https://github.com/zkemail/zk-email-verify). o1js uses the Mina proving system [Kimchi](https://o1-labs.github.io/proof-systems/specs/kimchi.html#kimchi) for its circuits and offers an alternative implementation to circom and halo2 based implementations. 
+> ZK Email is an application that allows for anonymous verification of email signatures while masking specific data. It enables verification of emails to/from specific domains or subsets of domains, as well as verification based on specific text in the email body. Our core SDK comes with libraries to assist with circuit generation as well as utility templates for general zk applications.
 
-Moreover, since the whole blckchain execution environment is a zk circuit, o1js allows for writing write smart contracts and other circuit logic in one language. 
+The [zk-email-o1js]() package serves as a toolkit for zkapp developers looking to integrate email verification functionality into their o1js/Mina applications.
 
+## Motivation
 
-## Quickstart 
+ZK Email in [o1js](https://github.com/o1-labs/o1js) serves as a wrapper around the existing project [zk-email-verify](https://github.com/zkemail/zk-email-verify), aimed at integrating the concept of [Programmable Provenance](https://blog.aayushg.com/zkemail/#arbitrary-length-sha256-hashing:~:text=One%20of%20the%20main,what%20zk%2Demail%20enables.) into the Mina blockchain.
 
-#### To Install
+> Programmable Provenance is the holy grail of web2-web3 integration, and it’s what zk-email enables.
 
-```
-git clone 
-npm install 
-```
+The implementation of zk-email in o1js is a step towards achieving Mina's mission of becoming the **Proof of Everything**.
 
-#### To quickly check validity of an eml file 
+For a more in-depth understanding of the motivation and purpose behind ZK Email, please read [Aayush's thoughts](https://blog.aayushg.com/zkemail/#trustlessly-verified-identity-on-chain:~:text=The%20lack%20of,zk%2Demail%20enables.) on ZK Email.
 
-1. Place raw email (.eml) file in /eml folder 
-2. Modify the VARIABLE of the file in eml-check.ts
+## Primitives Overview
 
-```
-const filePath = path.join(__dirname, '../../eml/email.eml');
-```
+The ZK Email Verifier in o1js is built upon several key packages that have been developed and published to empower developers within the Mina ecosystem to build their applications.
 
-3. Build and run
+### ZK Regex Circuit Compiler
+
+- The ZK Regex Compiler is not a module but rather a tool that generates o1js regex circuits as strings in the terminal, which can be copied and pasted into other o1js projects.
+
+- While not a direct dependency of the zk-email-verify project, the ZK Regex Compiler utilizes specialized regex circuits to extract the `body hash` from email headers, enabling the binding of separate inputs (header and body bytes) within the `emailVerify` circuit.
+
+- The ZK Regex Compiler is essential for extending the utility of ZK Email verification to develop various real-world applications such as [ZKP2P](https://zkp2p.xyz/) or [Proof of Twitter](https://twitter.prove.email/). It achieves this by facilitating the extraction or validation of specific substrings from email bodies and verifying information in email headers like authority or sender details.
+
+- For detailed usage instructions on the o1js ZK Regex Compiler, please refer to the [zk-regex-o1js](https://github.com/Shigoto-dev19/zk-regex-o1js?tab=readme-ov-file#description) documentation.
+
+### RSA65537 Signature Verification
+
+- This is a core primitive used by the main ZK Email Verify provable function to verify the DKIM signature of an email.
+
+- The primitive is published as an npm package called [o1js-rsa](https://www.npmjs.com/package/o1js-rsa), making it accessible for other Mina developers to utilize.
+
+### Base64 Encoding/Decoding
+
+- The body hash retrieved from email headers is crucial for proving the integrity of the input body. Since the body hash in headers is base64 encoded, it's necessary to base64 encode the computed SHA256 digest of the body for a consistent and compliant integrity check.
+
+- Initially published separately as [o1js-base64](https://www.npmjs.com/package/o1js-base64), these functionalities have been merged into the main o1js package since v1.3.0. The `base64Encode` and `base64Decode` functions can now be directly accessed as methods within the provable `Bytes` class. However, developers can refer to the package README for detailed guidance on using these primitives effectively.
+
+### Dynamic & Partial SHA256
+
+- Dynamic SHA256 is pivotal for verifying messages uniformly using the same verifier circuit, allowing hashing of messages up to a maximum length. This dynamic capability enhances email verification, although it imposes limits on the size of bytes in email headers and bodies. Otherwise, differing sizes would necessitate compiling distinct circuits for each email, preemptively setting the size.
+
+- Partial SHA256 is an adaptation of dynamicSHA256. It initializes with a `precomputedHash` as the initial hash value instead of the default specified by SHA2 standards. The remaining blocks are hashed within the SNARK, mirroring dynamic hash functionality.
+
+- Partial SHA256 serves as a significant optimization for proving the integrity of email body hashes.
+
+- For detailed usage instructions and performance insights on dynamic & partial SHA256, please consult the [dynamic-sha256](https://www.npmjs.com/package/dynamic-sha256) package documentation.
+
+## How to use the package
+
+The `o1js-email-verify` includes two essential functions:
+
+- `generateEmailVerifierInputs`: This helper function generates necessary inputs for the email verifier circuit from raw email content.
+- `emailVerify`: This provable function verifies an email, optionally checking the integrity of the email body if it matches the one in the header.
+
+### How to install
 
 ```sh
-npm run build && node build/src/main.js 
-
+npm install o1js-email-verify
 ```
-This will process the .eml file, and generate inputs for the circuit, then calls the `verify_email` function to validate the inputs in o1js environment.  
 
-#### To use as toolkit for developing an o1js application with email verification functionality
+### How to import
 
- follow these steps: 
+```ts
+import { generateEmailVerifierInputs, emailVerify } from 'o1js-email-verify';
+```
 
-1. Generate the Regex circuit 
-2. Write the smart contract logic
-3. Generate circuit inputs from raw eml file (frontend)
+### How to generate inputs for Email Verification
 
-A more thorough guide on developing an application is in this file along with a tutorial. 
+When generating inputs for the provable `emailVerify` function, follow these guidelines:
 
+- Start by specifying the `filePath` of the raw EML file.
+- Optionally, adjust the size limits for the headers and body:
 
-#### To run tests & coverage
+  - `maxHeaderLength`: Default is 1024 bytes.
+  - `maxRemainingBodyLength`: Default is 1536 bytes.
+  - Ensure these sizes are multiples of 64 and sufficiently large to accommodate your inputs.
+
+- The input generator returns an object that must be destructured for use with the `emailVerify` function:
+
+  - See the [tester function example](https://github.com/mohammed7s/zk-email-o1js/blob/main/src/tester.ts#L36-L52) for guidance.
+
+- Customize the `bodyHashCheck` boolean parameter to indicate whether to verify the body hash (`true`) or not (`false`).
+
+- Any deviation from these input requirements may cause the email verifier circuit to fail. The `emailVerify` provable function includes robust security checks to detect and handle errors effectively.
+
+## Using ZK Email Verification in Real-World Applications
+
+### Existing Projects Utilizing ZK Email on Ethereum
+
+- [ZKP2P](https://zkp2p.xyz/): Decentralized Venmo <> USDC Bridge
+- [Email Wallet](https://emailwallet.org/): Send transactions via email or act as a Safe multisig signer!
+- [Email Account Recovery](https://prove.email/blog/recovery): Use emails as guardians for any smart wallet or multisig.
+- [Nozee](https://nozee.xyz/): Anonymous Proofs of Email Domain via JWTs
+- [Proof of Twitter](https://twitter.prove.email/): Verify your Twitter username on-chain using zk proofs.
+
+### Developing zkApps with ZK Email
+
+Currently, there isn't a robust demo of a zkapp using the ZK Email Verification infrastructure. Here is a general approach to developing such applications:
+
+- **Generate Inputs and Verify Email:** Follow the instructions in the [input generation guide](#how-to-generate-inputs-for-email-verification).
+- **Call `emailVerify` in a zkApp Method:** Use this function to prove the authenticity of the email and its body.
+- **Optional: Use ZK-Regex for Sender Authority:** Implement a zk-regex circuit to assert the authority of specific senders (e.g., Twitter, GitHub, Venmo).
+- **Extract Data from Email Body:** Use a tailored zk-regex circuit to scrape specific data from the email body, such as a Twitter handle or invitation ID etc.
+
+## Troubleshooting
+
+Please note that the input generator function is a wrapper around the [helpers](https://github.com/zkemail/zk-email-verify/tree/5613d743773927fa4fbee1472b6aed6bde34a6cc/packages/helpers) from the zkemail library, particularly the DKIM parser class, to generate the inputs required for the email verifier circuit.
+
+The decision to use the original zk-email library helpers for input generation ensures that we benefit from code audits and maintain compatibility with other zk-email applications in the future.
+
+For any bugs or errors, you can refer to the [FAQ](https://zkemail.gitbook.io/zk-email/frequently-asked-questions) or open an issue in the original [zk-email-verify](https://github.com/zkemail/zk-email-verify/issues) repository.
+
+## How to build
+
+```sh
+npm run build
+```
+
+## How to run tests
 
 ```sh
 npm run test
 npm run testw # watch mode
-
 ```
+
+## How to run coverage
+
 ```sh
 npm run coverage
-
 ```
 
-#### To run benchmarks 
+## How to quickly verify an eml
 
-## Background and Motivation 
+Download your email EML file, change the `filePath` in the [tester file](./src/tester.ts), and run:
 
-Smart contract platforms like Mina, Ethereum, and Polkadot offer an independent execution environment for agreements, simulating the concept of a "world computer." This paradigm allows for unprecedented possibilities, but it also introduces the oracle problem: how to get external data into smart contracts. For example, proving a bank transfer to release an NFT or verifying employment before providing feedback on a decentralized social media platform. Integrating real-world data into smart contracts enriches their functionality.
+```sh
+npm run tester
+```
 
-One approach to bringing data on-chain is using a network of oracles, which relies on a majority-reward-minority-slash model to ensure honesty. Another approach is having data sources sign the data, with a registry of public keys on-chain for verification. This method maintains data privacy and eliminates the need for a network of staked oracles. While some data, like weather services or financial data, may not be signed and thus better suited for oracles, many modern systems like passports, ID cards, and emails already use digital signatures, making them ideal for the second approach.
+## How to benchmark
 
-ZK Email o1js leverages this second paradigm by allowing users to prove to a smart contract that they received an email with specific information, triggering on-chain actions. This can be used to prove ownership of a social media handle, control of a company email, or receipt of an autogenerated statement from a service like Binance. By using zero-knowledge (ZK) circuits, users can prove computations without revealing sensitive information, addressing privacy concerns and reducing gas fees associated with large emails.
+```sh
+npm run zkProgram
+```
 
-The initial implementation of zk-email was in circom and verified on Ethereum, achieving privacy and scalability goals. The o1js implementation offers the advantage of writing smart contracts and circuit logic in one application, thanks to Mina's zk circuit execution environment. Users generate proofs client-side and send them for verification on the Mina network, ensuring privacy and scalability by only logging the proof of execution on the public blockchain.
+### Preview
 
-## Library guide 
+```sh
+verifyEmailNoBodyCheck summary:  {
+  'Total rows': 109111,
+  Generic: 41907,
+  EndoMulScalar: 30840,
+  RangeCheck0: 2488,
+  Xor16: 22512,
+  Zero: 11265,
+  Poseidon: 99
+}
 
-/`email-verify.ts`   
-Contains the core functionality of the library. It verifies a DKIM signature using the provided message, signature, and public key. It also optionally checks the body hash if it matches the one in the header. 
+verifyEmailBodyCheck1024 summary:  {
+  'Total rows': 340298,
+  Generic: 206040,
+  EndoMulScalar: 64102,
+  RangeCheck0: 2488,
+  Xor16: 45040,
+  Zero: 22529,
+  Poseidon: 99
+}
 
-List of inputs: 
+verifyEmailBodyCheck1536 summary:  {
+  'Total rows': 386506,
+  Generic: 221528,
+  EndoMulScalar: 77926,
+  RangeCheck0: 2488,
+  Xor16: 56304,
+  Zero: 28161,
+  Poseidon: 99
+}
+```
 
-	paddedHeader: Bytes,
-	headerHashIndex: Field,
-	signature: Bigint2048,
-	publicKey: Bigint2048,
-	modulusLength: number,
-	bodyHashCheck: boolean,
-	paddedBodyRemainingBytes: Bytes,
-	precomputedHash: Bytes,
-	bodyHashIndex: Field,
-	headerBodyHashIndex: Field
+### Comparison of Email Verifier Circuit
 
+| **Function**          | **O1JS Kimchi Constraints**               | **Circom R1CS Constraints**               |
+| --------------------- | ----------------------------------------- | ----------------------------------------- |
+| SHA256 header hashing | 92,675 constraints for a 1024-byte input  | 506,670 constraints for a 1024-byte input |
+| RSA65537              | 12,401 constraints                        | 149,251 constraints                       |
+| SHA256 body hashing   | 139,074 rows for a 1536-byte input        | 760,142 rows for a 1536-byte input        |
+| base64Encode          | 1,697 constraints for a 32-byte input     | 1,697 constraints for a 32-byte input     |
+| bodyHashRegex         | 86,453 rows for a 1024-byte input         | 617,597 rows for a 1024-byte input        |
+|                       | 145,586 rows if selectSubarray is counted |                                           |
 
-The input can take bodyHashCheck = true or false 
+## Further Development Directions
 
-At its core, it verifies the signature using RSA siganture. The RSAVerify from the o1js-rsa library takes three inputs the signature, publicKey, message. Where the message needs to be constructed inside the function from paddedHeader and headerhashIndex. The message is the hashed header then pkcs15 encoded. 
+- Compute and integrate domain check regex function.
+- Ensure RFC compliance for the email verification standard for DKIM.
+- Develop a universal DKIM registry for the Mina ecosystem with an incentivized oracle network of DNS servers.
+- Explore handling very large emails using kimchi's recursion capabilities.
+- Experiment with wallet integrations.
 
+## Acknowledgments
 
-/`generate-inputs.ts`  
-Contains the preprocessing of the raw email file (.eml) 
-Purpose: used in an application's frontend to handle the eml file. 
-
-/`zkapp.ts`  
-e2e example of a twitter handle verification in smart contract. Use this as a template or reference for an application implementation. 
-
-/`main.ts`  
-change name to `eml-test.ts`
-Purpose: This file can be used as a test for an eml file. 
-It will generate inputs and call email verify. 
-
-/`utils.ts`  
-Purpose: has a bunch of supporting utils for functionality of the library. 
-- pkcs1v15Pad
-- bodyHashRegex
-- selectSubarray
-
-
-## Dependencies 
-
-#### zk-email helpers  
-We utilize the offchain [helpers](https://github.com/zkemail/zk-email-verify/tree/5613d743773927fa4fbee1472b6aed6bde34a6cc/packages/helpers) from the zkemail library, particularly the DKIM parser class to generate the inputs that would go in the circuit. This is implemented in the `generate-inputs.ts` file. The choice to use the original zk email library helpers to generate inputs is that we can benefit from code audits and better compatibility with other zk-email apps in the future.
-
-#### RSA-o1js
-The key functionality of the DKIM signature is the RSA signature verification. The library simply handles the dkim formatting rules and ensures that we can handle all types of emails. 
-https://github.com/Shigoto-dev19/o1js-rsa
-https://www.npmjs.com/package/o1js-rsa
-
-#### Base64-o1js  
-
-https://github.com/Shigoto-dev19/o1js-base64
-
-
-#### Dynamic and updateable SHA: provide comments
-
-
-## Troubleshooting 
-
-1. `Error: DKIM signature verification failed for domain androidloves.me. Reason: DNS failure: ESERVFAIL`
-   This is an internet issue. try a different internet connection or disable vpn if enabled.
-
-note: this section is small for now. Please submit issues no matter how silly so we can maintain a public list of problems and solutions for future developers. 
-
-
-
-## [How ZK Email Works](/docs/how_zkemail_works.md)
-
-Check this docs page for details on how the library works. 
-
-
-## Benchmarks 
-
-## Contribution 
-
-How to contribute:
--submit issues 
--submit PRs 
-
-Regex standards for different emails. We would like to keep email library of Regex's (twitter handle check, ..etc). Maybe we can add a folder for community regex's. send as PR. 
-
-
-## Acknowledgment
-zk-email team who led the way and ventured and provided a well documented library, and documentation, and who were quick and responsive to answer our questions on the telegram group. 
-
-Mina foundation for funding the zkignite series 
-
-zkignite participants who have helped in discussions like Rahul, Lauri, 
-
-o1js labs (gregor, florian, and others) for mentorship and guidance 
-
-
-## Known problems 
-
-- Hotmail and protonmail not working in the helpers. 
-
-
-## Further development // directions 
-
-- Compute and add domain check regex function
-- RFC compliance of the email verify standard for DKIM. 
-- develop a universal DKIM registry for the Mina ecosystem with incentivized oracle network of DNS servers.
-- Handling very large emails: kimchi is ideal for recursion and would be cool to experiment with very large emails.  
-- experiment with wallets 
-
-
-## Feedback
-
-telegram  
-form   
-submit an issue 
-
-
-## Support 
-
-The project is a public good project. 
-
-Mina multisig address: 
-
-The funds will be used for the maintenance and development of the following milestones
-
+- Thanks to the zk-email team for their pioneering efforts, comprehensive library, detailed documentation, and quick responses to our questions on the Telegram group.
+- Gratitude to the Mina Foundation for funding the zkIgnite series.
 
 ## License
 
 [Apache-2.0](LICENSE)
-
-
-
-
-
-
-
-
