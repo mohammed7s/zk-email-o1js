@@ -186,7 +186,6 @@ function bodyHashRegex(input: UInt8[]) {
  * @returns The selected subarray of bytes.
  * @throws Will throw an error if `subarrayLength` is greater than the input array length.
  */
-
 function selectSubarray(
   input: Field[],
   startIndex: Field,
