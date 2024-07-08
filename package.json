@@ -1,6 +1,6 @@
 {
-  "name": "zk-email-o1js",
-  "version": "0.1.0",
+  "name": "o1js-email-verify",
+  "version": "0.0.1",
   "description": "",
   "author": "",
   "license": "Apache-2.0",
@@ -8,7 +8,9 @@
     "mina-zkapp",
     "mina-zk-app",
     "mina-dapp",
-    "zkapp"
+    "zkapp",
+    "o1js",
+    "zk-email"
   ],
   "type": "module",
   "main": "build/src/index.js",
