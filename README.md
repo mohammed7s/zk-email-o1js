@@ -8,7 +8,7 @@ The [zk-email-o1js]() package serves as a toolkit for zkapp developers looking t
 
 ## Motivation
 
-ZK Email in [o1js](https://github.com/o1-labs/o1js) serves as a wrapper around the existing project [zk-email-verify](https://github.com/zkemail/zk-email-verify), aimed at integrating the concept of [Programmable Provenance](https://blog.aayushg.com/zkemail/#arbitrary-length-sha256-hashing:~:text=One%20of%20the%20main,what%20zk%2Demail%20enables.) into the Mina blockchain.
+ZK Email in [o1js](https://github.com/o1-labs/o1js) serves as a o1js implementation of the existing project [zk-email-verify](https://github.com/zkemail/zk-email-verify), aimed at integrating the concept of [Programmable Provenance](https://blog.aayushg.com/zkemail/#arbitrary-length-sha256-hashing:~:text=One%20of%20the%20main,what%20zk%2Demail%20enables.) into the Mina blockchain.
 
 > Programmable Provenance is the holy grail of web2-web3 integration, and it’s what zk-email enables.
 
@@ -202,6 +202,54 @@ verifyEmailBodyCheck1536 summary:  {
 - Develop a universal DKIM registry for the Mina ecosystem with an incentivized oracle network of DNS servers.
 - Explore handling very large emails using kimchi's recursion capabilities.
 - Experiment with wallet integrations.
+
+
+## Verifying DKIM Signatures 
+
+DKIM (DomainKeys Identified Mail) signatures became a standard [RFC6376](https://datatracker.ietf.org/doc/html/rfc6376) in 2011 to provide authenticity to emails and protect against phishing and other fraud attempts. Most emails today are signed by the domain that sent it using a public key signature (a public and private key pair) like [RSA](https://cryptobook.nakov.com/digital-signatures/rsa-signatures). The standard specifies which parts of the emails are signed and how data is formatted. 
+
+
+An example of dkim signature found in the header of an email:
+
+```
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=androidloves.me;
+	s=2019022801; t=1584218937;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=aeLbTnlUQQv2UFEWKHeiL5Q0NjOwj4ktNSInk8rN/P0=;
+	b=eJPHovlwH6mU2kj8rEYF2us6TJwQg0/T7NbJ6A1zHNbVJ5UJjyMOfn+tN3R/oSsBcSDsHT
+	xGysZJIRPeXEEcAOPNqUV4PcybFf/5cQDVpKZtY7kj/SdapzeFKCPT+uTYGQp1VMUtWfc1
+	SddyAZSw8lHcvkTqWhJKrCU0EoVAsik=
+```
+
+v: version of the DKIM key record
+a: The algorithm used for hashing (sha256) and signing (RSA)  
+c: message canocicalization: how is message formatted before signing  
+d: domain used for the DNS lookup  
+s: Selector for the public key  
+t: signature timestamp  
+h: header fields used as message in signature  
+bh: body hash of body in base64 encoded    
+b: base64 encoded signature  
+
+Presented with a signature above, we can verify it using these steps:
+
+1. Check the signature algorithm and get the public Key for the domain from a DNS server: query any DNS server to obtain the public key of a domain using s and d. It returns a p value for public key that looks like this:
+
+```
+"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCcaywJn59dbp7TbRiDsVloBdCsgl9wAEvHo9WCDSNRqDJjkF1Fjy44Q4emckHP/Tv7hJdIlBtV8hEw5zGD+/kKkhnlx04BSYqXuxed1nOq6FDjNTIR6TmHetMfVU1IcO7ewyJZp5/2uM64JmTDh2u3ed4+JR7jqFE2e/ZqBTM1iQIDAQAB"
+```
+2. Construct the exact header message that is signed. Exact header format is specified in the parameter h. 
+3. Hash the header message from 2. 
+4. Format using pkcs1.5 encoding [see here](https://datatracker.ietf.org/doc/html/rfc3447#section-9.2)
+5. verify the rsa signature using the signature b, public key p and the hashed header obtained from step 4. Note: We know its RSA signing algorithm because of a. 
+
+Another check that is usually performed as an extra measure is the body hash check which is field bh in the header that should correspond to the body b. To perform this check: 
+6. Calculate the hash of the body from b 
+7. compare the hash with the base64 decoded value bh from the DKIM-signature header of the email 
+
+![alt text](email_verify.png)
 
 ## Acknowledgments
 
