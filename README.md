@@ -245,9 +245,9 @@ Presented with a signature above, we can verify it using these steps:
 4. Format using pkcs1.5 encoding [see here](https://datatracker.ietf.org/doc/html/rfc3447#section-9.2)
 5. verify the rsa signature using the signature b, public key p and the hashed header obtained from step 4. Note: We know its RSA signing algorithm because of a. 
 
-Another check that is usually performed as an extra measure is the body hash check which is field bh in the header that should correspond to the body b. To perform this check: 
-6. Calculate the hash of the body from b 
-7. compare the hash with the base64 decoded value bh from the DKIM-signature header of the email 
+Another check that is usually performed as an extra measure is the body hash check which is field bh in the header that should correspond to the body b. To perform this check:   
+6. Calculate the hash of the body from b   
+7. compare the hash with the base64 decoded value bh from the DKIM-signature header of the email   
 
 ![alt text](email_verify.png)
 
